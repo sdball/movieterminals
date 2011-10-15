@@ -1,0 +1,8 @@
+/*
+ *= require cli
+ *= require_self
+*/
+div#screen,
+div#display {
+  font-size: 30px;
+}
