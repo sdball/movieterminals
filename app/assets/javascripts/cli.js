@@ -78,7 +78,7 @@ var TerminalShell = {
 				this.commands[cmd_name].apply(this, cmd_args);
 			} else {
 				if (!(this.fallback && this.fallback(terminal, cmd))) {
-					terminal.print('Unrecognized command. Type "help" for assistance.');
+					terminal.print(Terminal.config.unrecognized);
 				}
 			}
 			this.lastCommand = cmd;
@@ -112,7 +112,8 @@ var Terminal = {
 		prompt:				'guest@xkcd:/$ ',
 		spinnerCharacters:	['[   ]','[.  ]','[.. ]','[...]'],
 		spinnerSpeed:		250,
-		typingSpeed:		50
+		typingSpeed:		50,
+		unrecognized: 'Unrecognized command. Type "help" for assistance.'
 	},
 	
 	sticky: {
