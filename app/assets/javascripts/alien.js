@@ -27,7 +27,7 @@ function oneLiner(terminal, msg, msgmap) {
 TerminalShell.commands['help'] = TerminalShell.commands['halp'] = function(terminal) {
   terminal.print('');
   terminal.print('NOSTROMO INTERFACE 2037');
-  terminal.print('COPYRIGHT WEYLAND-YUTANI CORPORATION');
+  terminal.print('WEYLAND-YUTANI HUMAN INTERFACE LABS');
   terminal.print('');
   terminal.print('');
 };
@@ -157,36 +157,33 @@ var request_science_clarification = function(terminal) {
 
 var request_enhancement = function(terminal) {
   if (script.clarification_requested) {
-    terminal.setWorking(true);
-    window.setTimeout(function() {
-      terminal.print('NO FURTHER ENHANCEMENT')
-      window.setTimeout(function() {
-        terminal.setWorking(false);
-        terminal.print('');
-         terminal.print('SPECIAL ORDER 937');
-         terminal.print('');
-         terminal.print($('<ins>').text('SCIENCE OFFICER EYES ONLY'));
-         terminal.print('');
-         terminal.print('');
-      }, 1500)
-    }, 1000)
+    terminal.print('NO FURTHER ENHANCEMENT')
+    terminal.print('');
+    terminal.print('SPECIAL ORDER 937');
+    terminal.print('');
+    terminal.print($('<ins>').text('SCIENCE OFFICER EYES ONLY'));
+    terminal.print('');
+    terminal.print('');
   } else {
-    unable_to_compute(terminal);
+    terminal.print('NO FURTHER ENHANCEMENT');
+    terminal.print('');
+    terminal.print('');
   }
 }
 
 var special_order_937 = function(terminal) {
   if (script.command_override) {
+    terminal.print("\n");
     terminal.print('NOSTROMO REROUTED TO NEW CO-ORDINATES.');
     terminal.print('');
     terminal.print('INVESTIGATE LIFE FORM. GATHER SPECIMEN.');
-    terminal.print('');
+    terminal.print("\n\n");
     terminal.print('PRIORITY ONE');
     terminal.print('');
     terminal.print('ENSURE RETURN OF ORGANISM FOR ANALYSIS.');
     terminal.print('');
     terminal.print('ALL OTHER CONSIDERATIONS SECONDARY.');
-    terminal.print('');
+    terminal.print("\n\n");
     terminal.print('CREW EXPENDABLE.');
     terminal.print('');
     terminal.print('');
