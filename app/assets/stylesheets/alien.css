@@ -2,7 +2,18 @@
  *= require cli
  *= require_self
 */
-div#screen,
-div#display {
+
+@import url(http://fonts.googleapis.com/css?family=Droid+Sans+Mono);
+
+div#display pre, td, th, p, div {
+  font-family: 'Droid Sans Mono', monospace;
   font-size: 30px;
+  color: #48955e;
+}
+#inputline, p.command {
+  text-transform: uppercase;
+  margin-bottom: 1em;
+}
+.selection_option {
+  border-bottom: 3px solid #5fb176;
 }
