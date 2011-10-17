@@ -7,12 +7,15 @@
 
 div#display pre, td, th, p, div {
   font-family: 'Droid Sans Mono', monospace;
-  font-size: 30px;
+  font-size: 26px;
   color: #48955e;
 }
 #inputline, p.command {
   text-transform: uppercase;
   margin-bottom: 1em;
+}
+span#prompt {
+  color: #81c293;
 }
 .selection_option {
   border-bottom: 3px solid #5fb176;

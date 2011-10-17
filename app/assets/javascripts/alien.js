@@ -16,17 +16,20 @@ function oneLiner(terminal, msg, msgmap) {
   if (msgmap.hasOwnProperty(msg)) {
     terminal.print('');
     terminal.print(msgmap[msg]);
+    terminal.print('');
+    terminal.print('');
     return true;
   } else {
     return false;
   }
 }
 
-// No peeking!
 TerminalShell.commands['help'] = TerminalShell.commands['halp'] = function(terminal) {
   terminal.print('');
   terminal.print('NOSTROMO INTERFACE 2037');
   terminal.print('COPYRIGHT WEYLAND-YUTANI CORPORATION');
+  terminal.print('');
+  terminal.print('');
 };
 
 TerminalShell.commands['emergency'] = function(terminal) {
@@ -40,6 +43,8 @@ TerminalShell.commands['emergency'] = function(terminal) {
     if (full == 'command override') {
       terminal.print('');
       terminal.print('MISSING OVERRIDE ACCESS CODE');
+      terminal.print('');
+      terminal.print('');
     } else {
       var regex = /command override \d+/;
       if (regex.test(full)) {
@@ -47,6 +52,8 @@ TerminalShell.commands['emergency'] = function(terminal) {
         terminal.print('INVALID COMMAND OVERRIDE ACCESS');
         terminal.print($('<ins>').text('SESSION LOGGED'));
         terminal.print('ACCESS LOCKED');
+        terminal.print('');
+        terminal.print('');
         $('#inputline').remove();
       } else {
         unrecognized_command(terminal);
@@ -73,6 +80,8 @@ function ship_status(terminal) {
   terminal.print('#                               .- -I     #');
   terminal.print('#                                   II .I #  VELOCITY STATUS:');
   terminal.print('###########################################  59.09% SOL');
+  terminal.print('');
+  terminal.print('');
 }
 
 function address_matrix(terminal) {
@@ -92,6 +101,8 @@ function address_matrix(terminal) {
   terminal.print('ALERT        2088SC       DECK C         A3005');
   terminal.print('MATRIAL      2090         LIFE SUPPORT');
   terminal.print('OVERLOCK     M2091        0%             M3003AM');
+  terminal.print('');
+  terminal.print('');
 }
 
 var evaluate_procedures = function(terminal) {
@@ -101,6 +112,8 @@ var evaluate_procedures = function(terminal) {
     terminal.setWorking(false);
     terminal.print('UNABLE TO COMPUTE');
     terminal.print($('<ins>').text('AVAILABLE DATA INSUFFICIENT'));
+    terminal.print('');
+    terminal.print('');
   }, 1000);
 }
 
@@ -111,25 +124,35 @@ var request_options = function(terminal) {
       terminal.setWorking(false);
       terminal.print('UNABLE TO COMPUTE');
       terminal.print($('<ins>').text('AVAILABLE DATA INSUFFICIENT'));
+      terminal.print('');
+      terminal.print('');
     }, 1000);
   } else {
     terminal.print('UNABLE TO COMPUTE');
     terminal.print($('<ins>').text('PARAMETERS UNDEFINED'));
+    terminal.print('');
+    terminal.print('');
   }
 }
 
 var my_chances = function(terminal) {
   if (script.procedures_evaluated) {
     terminal.print($('<ins>').text('DOES NOT COMPUTE'));
+    terminal.print('');
+    terminal.print('');
   } else {
     terminal.print('UNABLE TO COMPUTE');
     terminal.print($('<ins>').text('PARAMETERS UNDEFINED'));
+    terminal.print('');
+    terminal.print('');
   }
 }
 
 var request_science_clarification = function(terminal) {
   script.clarification_requested = true;
   terminal.print($('<ins>').text('UNABLE TO CLARIFY'));
+  terminal.print('');
+  terminal.print('');
 }
 
 var request_enhancement = function(terminal) {
@@ -143,6 +166,8 @@ var request_enhancement = function(terminal) {
          terminal.print('SPECIAL ORDER 937');
          terminal.print('');
          terminal.print($('<ins>').text('SCIENCE OFFICER EYES ONLY'));
+         terminal.print('');
+         terminal.print('');
       }, 1500)
     }, 1000)
   } else {
@@ -163,8 +188,12 @@ var special_order_937 = function(terminal) {
     terminal.print('ALL OTHER CONSIDERATIONS SECONDARY.');
     terminal.print('');
     terminal.print('CREW EXPENDABLE.');
+    terminal.print('');
+    terminal.print('');
   } else {
     terminal.print($('<ins>').text('SCIENCE OFFICER EYES ONLY'));
+    terminal.print('');
+    terminal.print('');
   }
 }
 
@@ -172,15 +201,21 @@ var the_story = function(terminal) {
   terminal.print('NOSTROMO REROUTED TO NEW CO-ORDINATES.');
   terminal.print('');
   terminal.print('INVESTIGATE LIFE FORM. GATHER SPECIMEN.');
+  terminal.print('');
+  terminal.print('');
 }
 
 var unable_to_compute = function(terminal) {
   terminal.print('UNABLE TO COMPUTE');
   terminal.print($('<ins>').text('PARAMETERS UNDEFINED'));
+  terminal.print('');
+  terminal.print('');
 }
 
 var unrecognized_command = function(terminal) {
   terminal.print('COULD NOT PARSE COMMAND');
+  terminal.print('');
+  terminal.print('');
 }
 
 var script = {

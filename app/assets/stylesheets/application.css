@@ -5,3 +5,9 @@
  *= require bootstrap
  *= require_self
 */
+
+@import url(http://fonts.googleapis.com/css?family=Droid+Sans+Mono);
+
+div.hero-unit {
+  font-family: "Droid Sans Mono", monospace;
+}
