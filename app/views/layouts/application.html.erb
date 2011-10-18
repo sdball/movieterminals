@@ -1,12 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Movie Terminals - <%= @movie_title || 'Home' %></title>
-  <%= stylesheet_link_tag @movie_style || 'application' %>
-  <%= javascript_include_tag @movie_script || 'application' %>
-  <%= csrf_meta_tags %>
-</head>
-<body>
-<%= yield %>
-</body>
-</html>
+<% content_for :menu do %>
+  <div class="topbar">
+    <div class="fill">
+      <div class="container">
+        <a class="brand" href="#">Movie Terminals</a>
+        <ul class="nav">
+          <li class="active">
+            <%= link_to 'Home', root_url %>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>
+<%= render :template => 'layouts/terminal' %>
