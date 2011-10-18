@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Movie Terminals - <%= @movie_title || 'Home' %></title>
+  <title><%= @head_title || 'Home' %> | Movie Terminals</title>
   <%= stylesheet_link_tag @movie_style || 'application' %>
   <%= javascript_include_tag @movie_script || 'application' %>
   <%= csrf_meta_tags %>
@@ -24,9 +24,6 @@
   <% end %>
 </head>
 <body>
-  <% if content_for? :menu %>
-    <%= yield(:menu) %>
-  <% end %>
-  <%= yield %>
+<%= yield %>
 </body>
 </html>

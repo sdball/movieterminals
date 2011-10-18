@@ -37,16 +37,16 @@ TerminalShell.commands['emergency'] = function(terminal) {
   cmd_args.shift(); // terminal
   var full = cmd_args.join(' ');
   console.log(full);
-  if (full == 'command override 100375') {
+  if (full == 'command override 100375' || full == 'command overide 100375') {
     script.command_override = true;
   } else {
-    if (full == 'command override') {
+    if (full == 'command override' || full == 'command overide') {
       terminal.print('');
       terminal.print('MISSING OVERRIDE ACCESS CODE');
       terminal.print('');
       terminal.print('');
     } else {
-      var regex = /command override \d+/;
+      var regex = /command overr?ide \d+/;
       if (regex.test(full)) {
         terminal.print('');
         terminal.print('INVALID COMMAND OVERRIDE ACCESS');
@@ -174,13 +174,14 @@ var request_enhancement = function(terminal) {
 var special_order_937 = function(terminal) {
   if (script.command_override) {
     terminal.print("\n");
-    terminal.print('NOSTROMO REROUTED TO NEW CO-ORDINATES.');
+    terminal.print('NOSTROMO REROUTED');
+    terminal.print('TO NEW CO-ORDINATES.');
     terminal.print('');
     terminal.print('INVESTIGATE LIFE FORM. GATHER SPECIMEN.');
     terminal.print("\n\n");
     terminal.print('PRIORITY ONE');
     terminal.print('');
-    terminal.print('ENSURE RETURN OF ORGANISM FOR ANALYSIS.');
+    terminal.print('INSURE RETURN OF ORGANISM FOR ANALYSIS.');
     terminal.print('');
     terminal.print('ALL OTHER CONSIDERATIONS SECONDARY.');
     terminal.print("\n\n");
