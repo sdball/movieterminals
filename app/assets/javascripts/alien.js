@@ -1,21 +1,45 @@
+//= require prototypal_inheritance
 //= require jquery.min-1.4.2
 //= require jquery.hotkeys-0.7.9
 //= require cli
 //= require_self
 
-function getRandomInt(min, max) {
-	// via https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/random#Examples
-	return Math.floor(Math.random() * (max - min + 1)) + min;
+var muthur = Object.create(TerminalShell);
+Terminal.config.prompt = "\nINTERFACE 2037 READY FOR INQUIRY\n\n";
+Terminal.config.unrecognized = "UNABLE TO PARSE INPUT.";
+Terminal.config.typingSpeed = 80;
+Terminal.config.spinnerCharacters = [];
+Terminal.output = muthur;
+// modify how Terminal processes input to better recreate the muthur interface
+Terminal.processInputBuffer = function(cmd) {
+  $('#display').html('');
+  var cmd = trim(this.buffer);
+  this.clearInputBuffer();
+  if (cmd.length == 0) {
+    return false;
+  }
+  this.addHistory(cmd);
+  if (this.output) {
+    return this.output.process(this, cmd);
+  } else {
+    return false;
+  }
 }
+muthur.terminal = Terminal;
 
-function randomChoice(items) {
-	return items[getRandomInt(0, items.length-1)];
+muthur.randomInt = function(min, max) {
+  min = min || 0;
+  max = max || 9;
+  // via https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Math/random#Examples
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-function oneLiner(terminal, msg, msgmap) {
-  if (msgmap.hasOwnProperty(msg)) {
+muthur.randomChoice = function(items) {
+  return items[this.randomInt(0, items.length-1)];
+}
+muthur.oneLiner = function(terminal, msg) {
+  if (this.oneliners.hasOwnProperty(msg)) {
     terminal.print('');
-    terminal.print(msgmap[msg]);
+    terminal.print(this.oneliners[msg]);
     terminal.print('');
     terminal.print('');
     return true;
@@ -23,22 +47,19 @@ function oneLiner(terminal, msg, msgmap) {
     return false;
   }
 }
-
-TerminalShell.commands['help'] = TerminalShell.commands['halp'] = function(terminal) {
+muthur.commands['help'] = function(terminal) {
   terminal.print('');
   terminal.print('NOSTROMO INTERFACE 2037');
   terminal.print('WEYLAND-YUTANI HUMAN INTERFACE LABS');
   terminal.print('');
   terminal.print('');
-};
-
-TerminalShell.commands['emergency'] = function(terminal) {
+}
+muthur.commands['emergency'] = function(terminal) {
   var cmd_args = Array.prototype.slice.call(arguments);
   cmd_args.shift(); // terminal
   var full = cmd_args.join(' ');
-  console.log(full);
   if (full == 'command override 100375' || full == 'command overide 100375') {
-    script.command_override = true;
+    muthur.script.command_override = true;
   } else {
     if (full == 'command override' || full == 'command overide') {
       terminal.print('');
@@ -54,15 +75,17 @@ TerminalShell.commands['emergency'] = function(terminal) {
         terminal.print('ACCESS LOCKED');
         terminal.print('');
         terminal.print('');
-        $('#inputline').remove();
+        $('#bottomline').fadeOut('fast', function() {
+          $('#display').fadeOut('slow');
+        });
       } else {
-        unrecognized_command(terminal);
+        muthur.unrecognized_command(terminal);
       }
     }
   }
 }
 
-function ship_status(terminal) {
+muthur.ship_status = function(terminal) {
   terminal.print('');
   terminal.print('INPUTF         POWER/12492.2                 SHIP:');
   terminal.print('                                             WEYLAN YUTANI');
@@ -84,7 +107,7 @@ function ship_status(terminal) {
   terminal.print('');
 }
 
-function address_matrix(terminal) {
+muthur.address_matrix = function(terminal) {
   terminal.print('OVERMONITORING ADDRESS MATRIX');
   terminal.print('');
   terminal.print('CRFX         OM2077AM     LALLIGNMENT    SM2093');
@@ -105,20 +128,16 @@ function address_matrix(terminal) {
   terminal.print('');
 }
 
-var evaluate_procedures = function(terminal) {
-  script.procedures_evaluated = true
-  terminal.setWorking(true);
-  window.setTimeout(function() {
-    terminal.setWorking(false);
-    terminal.print('UNABLE TO COMPUTE');
-    terminal.print($('<ins>').text('AVAILABLE DATA INSUFFICIENT'));
-    terminal.print('');
-    terminal.print('');
-  }, 1000);
+muthur.evaluate_procedures = function(terminal) {
+  muthur.script.procedures_evaluated = true
+  terminal.print('UNABLE TO COMPUTE');
+  terminal.print($('<ins>').text('AVAILABLE DATA INSUFFICIENT'));
+  terminal.print('');
+  terminal.print('');
 }
 
-var request_options = function(terminal) {
-  if (script.procedures_evaluated) {
+muthur.request_options = function(terminal) {
+  if (muthur.script.procedures_evaluated) {
     terminal.setWorking(true);
     window.setTimeout(function() {
       terminal.setWorking(false);
@@ -135,8 +154,8 @@ var request_options = function(terminal) {
   }
 }
 
-var my_chances = function(terminal) {
-  if (script.procedures_evaluated) {
+muthur.my_chances = function(terminal) {
+  if (muthur.script.procedures_evaluated) {
     terminal.print($('<ins>').text('DOES NOT COMPUTE'));
     terminal.print('');
     terminal.print('');
@@ -148,15 +167,15 @@ var my_chances = function(terminal) {
   }
 }
 
-var request_science_clarification = function(terminal) {
-  script.clarification_requested = true;
+muthur.request_science_clarification = function(terminal) {
+  muthur.script.clarification_requested = true;
   terminal.print($('<ins>').text('UNABLE TO CLARIFY'));
   terminal.print('');
   terminal.print('');
 }
 
-var request_enhancement = function(terminal) {
-  if (script.clarification_requested) {
+muthur.request_enhancement = function(terminal) {
+  if (muthur.script.clarification_requested) {
     terminal.print('NO FURTHER ENHANCEMENT')
     terminal.print('');
     terminal.print('SPECIAL ORDER 937');
@@ -171,8 +190,8 @@ var request_enhancement = function(terminal) {
   }
 }
 
-var special_order_937 = function(terminal) {
-  if (script.command_override) {
+muthur.special_order_937 = function(terminal) {
+  if (muthur.script.command_override) {
     terminal.print("\n");
     terminal.print('NOSTROMO REROUTED');
     terminal.print('TO NEW CO-ORDINATES.');
@@ -195,7 +214,7 @@ var special_order_937 = function(terminal) {
   }
 }
 
-var the_story = function(terminal) {
+muthur.the_story = function(terminal) {
   terminal.print('NOSTROMO REROUTED TO NEW CO-ORDINATES.');
   terminal.print('');
   terminal.print('INVESTIGATE LIFE FORM. GATHER SPECIMEN.');
@@ -203,74 +222,69 @@ var the_story = function(terminal) {
   terminal.print('');
 }
 
-var unable_to_compute = function(terminal) {
+muthur.unable_to_compute = function(terminal) {
   terminal.print('UNABLE TO COMPUTE');
   terminal.print($('<ins>').text('PARAMETERS UNDEFINED'));
   terminal.print('');
   terminal.print('');
 }
 
-var unrecognized_command = function(terminal) {
+muthur.unrecognized_command = function(terminal) {
   terminal.print('COULD NOT PARSE COMMAND');
   terminal.print('');
   terminal.print('');
 }
 
-var script = {
+muthur.script = {
   procedures_evaluated: false,
   clarification_requested: false,
   command_override: false,
   commands: {
-    "what's the story mother?": the_story,
-    "request evaluation of current procedures to terminate alien": evaluate_procedures,
-    "can we kill the alien?": evaluate_procedures,
-    "request options for possible procedure": request_options,
-    "what are my chances?": my_chances,
-    "request clarification on science inability to neutralize alien": request_science_clarification,
-    "request enhancement": request_enhancement,
-    "what is special order 937 ?": special_order_937,
-    "what is special order 937?": special_order_937
+    "what's the story mother?": muthur.the_story,
+    "request evaluation of current procedures to terminate alien": muthur.evaluate_procedures,
+    "can we kill the alien?": muthur.evaluate_procedures,
+    "request options for possible procedure": muthur.request_options,
+    "what are my chances?": muthur.my_chances,
+    "request clarification on science inability to neutralize alien": muthur.request_science_clarification,
+    "request enhancement": muthur.request_enhancement,
+    "what is special order 937 ?": muthur.special_order_937,
+    "what is special order 937?": muthur.special_order_937
   }
 }
 
-var oneliners = {
+muthur.oneliners = {
   'ship registration': 'NOSTROMO 182246',
   'ship name': 'NOSTROMO 182246'
 };
 
-var script_line = function (terminal, command) {
-  if (command in script.commands) {
-    script.commands[command](terminal);
+muthur.script_line = function (terminal, command) {
+  if (command in muthur.script.commands) {
+    muthur.script.commands[command](terminal);
     return true;
   } else {
     return false;
   }
 }
 
-TerminalShell.fallback = function(terminal, cmd) {
+muthur.fallback = function(terminal, cmd) {
   cmd = cmd.toLowerCase();
-  if (script_line(terminal, cmd)) {
+  if (this.script_line(terminal, cmd)) {
     return true;
-  } else if (oneLiner(terminal, cmd, oneliners)) {
+  } else if (this.oneLiner(terminal, cmd)) {
     return true;
   } else {
     if ("ship status" == cmd) {
-      ship_status(terminal);
+      this.ship_status(terminal);
       return true;
     }
     return false;
   }
 };
 
-Terminal.config.prompt = "\nINTERFACE 2037 READY FOR INQUIRY\n\n> ";
-Terminal.config.unrecognized = "UNPARSED INPUT";
-Terminal.config.typingSpeed = 80;
-Terminal.config.spinnerCharacters = [];
-
 $(document).ready(function() {
 	Terminal.promptActive = false;
 	$('#screen').bind('cli-load', function(e) {
-    address_matrix(Terminal);
+    muthur.address_matrix(Terminal);
     Terminal.runCommand("WHAT'S THE STORY MOTHER?");
 	});
 });
