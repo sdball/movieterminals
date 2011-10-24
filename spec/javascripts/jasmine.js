@@ -4,5 +4,4 @@
 //
 //= require alien
 //= require helpers/SpecHelper
-//= require helpers/jasmine-jquery-1.3.1
 //= require AlienSpec
