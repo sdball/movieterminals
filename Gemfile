@@ -10,6 +10,12 @@ group :assets do
   gem 'uglifier', '>= 1.0.3'
 end
 
+group :development, :test do
+  # Enable JavaScript testing in the asset pipeline
+  gem 'test_track'
+  gem 'jasmine'
+end
+
 group :test do
   # Pretty printed test output
   gem 'turn', :require => false
