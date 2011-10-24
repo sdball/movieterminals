@@ -3,7 +3,10 @@ source 'http://rubygems.org'
 gem 'rails', '3.1.1'
 gem 'jquery-rails'
 gem 'thin'
-gem 'jasmine', :group => [:development, :test]
+
+# Enable JavaScript testing in the asset pipeline
+gem 'test_track'
+gem 'jasmine'
 
 group :assets do
   gem 'sass-rails',   '~> 3.1.4'
