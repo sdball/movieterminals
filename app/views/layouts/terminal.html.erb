@@ -2,8 +2,8 @@
 <html>
 <head>
   <title><%= @head_title || 'Home' %> | Movie Terminals</title>
-  <%= stylesheet_link_tag 'application' %>
-  <%= javascript_include_tag 'application' %>
+  <%= stylesheet_link_tag @movie_style || 'application' %>
+  <%= javascript_include_tag @movie_script || 'application' %>
   <%= csrf_meta_tags %>
   <% if "production" == Rails.env %>
     <script type="text/javascript">
@@ -24,26 +24,6 @@
   <% end %>
 </head>
 <body>
-  <div class="topbar">
-    <div class="fill">
-      <div class="container">
-        <%= link_to 'Movie Terminals', root_url, :class => 'brand' %>
-        <ul class="nav">
-          <li class="active">
-            <%= link_to 'Home', root_url %>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="container">
-    <div class="content">
-
-      <div class="hero-unit" id="site_title">
-        <%= yield :hero_unit %>
-      </div>
-      <%= yield %>
-    </div> <!-- .content -->
-  </div> <!-- .container -->
+<%= yield %>
 </body>
 </html>

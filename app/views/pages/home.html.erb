@@ -1,0 +1,19 @@
+<% content_for :hero_unit do %>
+  <h1>Movie Terminals</h1>
+  <h2>&gt; Play with recreations of famous movie terminals.</h2>
+<% end %>
+
+<!-- Example row of columns -->
+<div class="row">
+  <div class="span6">
+    <h2>Alien (1979)</h2>
+    <p>One of the first examples of a terminal text interface relaying key
+    plot points.</p>
+    <p>Its "Interface 2037" seems to be something of a natural English parser
+    or its commands are unusually verbose. Unless you are an extreme
+    <em>Alien</em> fan or have watched it very recently, you'll want to take a
+    look at the command reference.</p>
+    <p><%= link_to 'Command Reference', alien_reference_path %></p>
+    <p><%= link_to 'Launch Terminal', alien_path, :class => 'btn' %></p>
+  </div>
+</div>
