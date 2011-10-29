@@ -9,11 +9,13 @@ Terminal.config.prompt = "\nINTERFACE 2037 READY FOR INQUIRY\n\n";
 Terminal.config.unrecognized = "UNABLE TO PARSE INPUT.";
 Terminal.config.typingSpeed = 80;
 Terminal.config.spinnerCharacters = [];
+Terminal.config.name = 'alien';
 Terminal.output = muthur;
 // modify how Terminal processes input to better recreate the muthur interface
 Terminal.processInputBuffer = function(cmd) {
   $('#display').html('');
   var cmd = trim(this.buffer);
+  if (_gaq) _gaq.push(['_trackEvent', 'Terminal Command', Terminal.config.name, cmd.toLowerCase()]);
   this.clearInputBuffer();
   if (cmd.length == 0) {
     return false;
