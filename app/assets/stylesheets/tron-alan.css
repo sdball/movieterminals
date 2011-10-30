@@ -1,0 +1,12 @@
+/*
+ *= require cli
+ *= require_self
+*/
+div#screen {
+  border-right: 170px solid black;
+}
+img#encom {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
