@@ -15,7 +15,7 @@ Terminal.output = muthur;
 Terminal.processInputBuffer = function(cmd) {
   $('#display').html('');
   var cmd = trim(this.buffer);
-  if (_gaq) _gaq.push(['_trackEvent', 'Terminal Command', Terminal.config.name, cmd.toLowerCase()]);
+  if (window._gaq) _gaq.push(['_trackEvent', 'Terminal Command', Terminal.config.name, cmd.toLowerCase()]);
   this.clearInputBuffer();
   if (cmd.length == 0) {
     return false;
