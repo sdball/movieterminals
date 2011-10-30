@@ -416,7 +416,7 @@ var Terminal = {
 	processInputBuffer: function(cmd) {
 		this.print($('<p>').addClass('command').text(this.config.prompt + this.buffer));
 		var cmd = trim(this.buffer);
-		if (_gaq) _gaq.push(['_trackEvent', 'Terminal Command', Terminal.config.name, cmd.toLowerCase()]);
+		if (window._gaq) _gaq.push(['_trackEvent', 'Terminal Command', Terminal.config.name, cmd.toLowerCase()]);
 		this.clearInputBuffer();
 		if (cmd.length == 0) {
 			return false;
