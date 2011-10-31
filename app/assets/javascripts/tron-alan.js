@@ -62,7 +62,7 @@ alanone.stop_service = function(service) {
 
 // calculate date with elapsing time
 alanone.initial_epochtime = new Date().getTime();
-alanone.in_universe_epochtime = new Date(1982, 06, 07, 11, 12, 43).getTime();
+alanone.in_universe_epochtime = new Date(1982, 08, 22, 18, 32, 03).getTime();
 alanone.commands['date'] = function() {
   var elapsed_epochtime = new Date().getTime() - alanone.initial_epochtime;
   var universe_date = new Date(alanone.in_universe_epochtime + elapsed_epochtime);
