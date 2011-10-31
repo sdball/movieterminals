@@ -1,0 +1,19 @@
+/*
+ *= require cli
+ *= require_self
+*/
+@import url(http://fonts.googleapis.com/css?family=Ubuntu+Mono&subset=latin);
+div#display {
+  border-right: 170px solid black;
+}
+div#display pre, td, th, p, div {
+  font-family: 'Ubuntu Mono', monospace;
+  font-size: 28px;
+  color: #69c7f3;
+  text-shadow: 0px 0px 2px #98d9f7;
+}
+img#encom {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
