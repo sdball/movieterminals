@@ -32,17 +32,31 @@ alanone.commands['service'] = function() {
       }
       break;
     case 'stop':
-      break;
+    if (cmd_args[1]) {
+      alanone.stop_service(cmd_args[1]);
+    } else {
+      alanone.terminal.print('USAGE: SERVICE STOP COMMAND');
+      alanone.terminal.print("My new control system isn't a mind reader. -Roy");
+    }
+    break;
   }
 }
 alanone.start_service = function(service) {
-  switch (service) {
+  switch(service) {
     case 'tron':
       alanone.terminal.print('ADDRESS FILE EMPTY');
       alanone.terminal.print('TRON PROGRAM UNAVAILABLE');
       break;
     default:
       alanone.terminal.print('SERVICE "' + service + '" NOT REGISTERED');
+  }
+}
+alanone.stop_service = function(service) {
+  switch(service) {
+    case 'mcp':
+      alanone.terminal.print('UNAUTHORIZED ACCESS');
+      alanone.terminal.print('COMMAND DERESOLVED');
+      alanone.terminal.print('INCIDENT LOGGED');
   }
 }
 
