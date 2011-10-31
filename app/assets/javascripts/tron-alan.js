@@ -45,6 +45,12 @@ alanone.start_service = function(service) {
       alanone.terminal.print('SERVICE "' + service + '" NOT REGISTERED');
   }
 }
+// TODO: initialize date on script start to some baseline e.g. Wed Jul 07 11:12:43 EDT 2011
+//       initialize "now" in seconds
+// date function should count seconds from script start to calc "current" date
+alanone.commands['date'] = function() {
+  alanone.terminal.print('Wed Jul 07 11:12:43 EDT 1982');
+}
 
 $(document).ready(function() {
   Terminal.promptActive = false;
