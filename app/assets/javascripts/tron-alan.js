@@ -6,7 +6,7 @@
 
 var alanone = Object.create(TerminalShell);
 Terminal.config.prompt = "\n$ ";
-Terminal.config.unrecognized = "UNABLE TO PARSE INPUT.";
+Terminal.config.unrecognized = "command not found";
 Terminal.config.typingSpeed = 60;
 Terminal.config.spinnerCharacters = [];
 Terminal.config.name = 'tron-alan';
