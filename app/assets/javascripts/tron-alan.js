@@ -19,15 +19,63 @@ Terminal.setCursorState = function() {
 };
 
 alanone.terminal = Terminal;
+alanone.tron_dir = {
+  path: '/home/alan1/projects/tron',
+  files: {
+    'tron.c': {
+      type: 'file',
+      read: function() {
+        alanone.terminal.print('FILE LISTING UNAVAILABLE');
+        alanone.terminal.print('PROGRAM LOCKED BY MCP');
+      }
+    }
+  }
+};
+alanone.current_dir = alanone.tron_dir;
+
+alanone.commands['ls'] = function() {
+  var cmd_args = Array.prototype.slice.call(arguments);
+  cmd_args.shift();
+  if (!cmd_args[0]) {
+    var filelist = [];
+    $.each(alanone.current_dir.files, function(name, obj) {
+      if (obj.type == 'dir') {
+        filelist.push('/' + name);
+      } else {
+        filelist.push(name);
+      }
+    });
+    alanone.terminal.print(filelist);
+  }
+}
+alanone.commands['cat'] = function() {
+  var cmd_args = Array.prototype.slice.call(arguments);
+  cmd_args.shift();
+  if (!cmd_args[0]) {
+    alanone.terminal.print('USAGE: CAT [FILENAME]');
+    return;
+  }
+  if (cmd_args[0] in alanone.current_dir.files) {
+    alanone.current_dir.files[cmd_args[0]].read();
+  }
+}
+alanone.commands['pwd'] = function() {
+  alanone.terminal.print(alanone.current_dir.path);
+}
 alanone.commands['service'] = function() {
   var cmd_args = Array.prototype.slice.call(arguments);
   cmd_args.shift();
+  if (!cmd_args[0]) {
+    alanone.terminal.print('USAGE: SERVICE [START|STOP] [COMMAND]');
+    alanone.terminal.print("My new control system isn't a mind reader. -Roy");
+    return;
+  }
   switch (cmd_args[0]) {
     case 'start':
       if (cmd_args[1]) {
         alanone.start_service(cmd_args[1]);
       } else {
-        alanone.terminal.print('USAGE: SERVICE START COMMAND');
+        alanone.terminal.print('USAGE: SERVICE START [COMMAND]');
         alanone.terminal.print("My new control system isn't a mind reader. -Roy");
       }
       break;
@@ -35,7 +83,7 @@ alanone.commands['service'] = function() {
     if (cmd_args[1]) {
       alanone.stop_service(cmd_args[1]);
     } else {
-      alanone.terminal.print('USAGE: SERVICE STOP COMMAND');
+      alanone.terminal.print('USAGE: SERVICE STOP [COMMAND]');
       alanone.terminal.print("My new control system isn't a mind reader. -Roy");
     }
     break;
