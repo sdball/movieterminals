@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ page.title }} | Movie Terminals</title>
+  {{ page.shortname | stylesheet }}
+  {{ page.shortname | javascript }}
+</head>
+<body>
+{{ content }}
+{% include clicky.html %}
+</body>
+</html>
