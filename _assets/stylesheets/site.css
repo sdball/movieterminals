@@ -1,0 +1,18 @@
+/*
+ *= require vendor/bootstrap
+ *= require vendor/prettify
+*/
+
+@import url(http://fonts.googleapis.com/css?family=Droid+Sans+Mono);
+
+body {
+  padding-top: 60px;
+}
+
+#site_title div.hero-unit {
+  font-family: "Droid Sans Mono", monospace;
+}
+
+div.message {
+  margin-bottom: 18px;
+}
