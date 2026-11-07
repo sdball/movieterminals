@@ -36,9 +36,23 @@ and a fallback, then `t.boot(...)` with its opening.
   finishes. Use that with `t.sleep()` to pace output.
 - `t.print(...lines)` prints each argument as a line. `""` is a blank line
   (`div.blank`, 1em tall), and an inline node gets its own `<p>`.
-- Alien clears the screen on every command (`clearOnCommand`), lowercases
-  input with a filter, and matches most queries as whole phrases in
-  `SCRIPT` and `fallback()`, not by first word.
+- Output can be paced with `t.type(lines, opts)`: a character at a time, or
+  a line at a time with `by: "line"`. Any key or click while output runs
+  skips to the end, and what was typed waits on the next line (type-ahead).
+  With prefers-reduced-motion it prints at once. Use `t.sleep()` for
+  dramatic pauses; a skip cuts those short too.
+- `t.hold()` hides the command line and leaves the keyboard to the page
+  (Alien's address matrix); `t.release()` brings it back.
+- Alien boots to the address matrix: each address is a `<button
+  class="entry">` with a roving tabindex, and `alien.js` handles the arrow
+  keys. INTERFACE 2037 releases to the inquiry prompt; nothing types itself
+  there (a decision, not an oversight). Other addresses show a readout from
+  `READOUTS`. Escape on an empty prompt (`onEscape`) or ADDRESS MATRIX goes
+  back.
+- At the prompt Alien clears the screen on every command
+  (`clearOnCommand`), lowercases input with a filter, answers through
+  `say()` (teletype), and matches most queries as whole phrases in `SCRIPT`
+  and `fallback()`, not by first word.
 - Each film's script sets `window.term` to its terminal, which is handy in
   the console: `await term.submit("ship status")`.
 - Keys: Enter submits (the form's submit, so a phone's send key works),

@@ -36,13 +36,33 @@
 
     t.print(...lines)   each argument is a line: a string, "" for a blank
                         line, or a DOM node (inline nodes get a <p> of their own)
+    t.type(lines, opts) print lines like a teletype (async). opts:
+                          cps: characters per second (default options.cps)
+                          by: "char" (default) or "line", a line at a time
+                          lineDelay: ms between lines when by "line"
+                          blankDelay: ms a blank line takes
+                        Any key or click finishes it at once, and with
+                        prefers-reduced-motion it prints at once.
     t.el(tag, attrs, ...children)   make a DOM node
     t.clear()           wipe the screen
     t.run(text)         type text into the command line, then press Enter
     t.submit(text)      run a line as if it was typed (returns a promise)
-    t.sleep(ms)         a promise that resolves after ms
+    t.sleep(ms)         a promise that resolves after ms, or at once after
+                        a skip (a key or click while output is running)
+    t.hold()            hide the command line and leave the keyboard to the
+                        page, for a menu or the like; t.release() brings it back
     t.lock()            shut the terminal down for good
     t.setPrompt(text)
+
+  Options also take cps (teletype speed, default 90) and onEscape(t), for
+  Escape on an empty command line.
+
+  ---------- Keys ----------
+
+    Enter submits; up/down walk the history; Shift+up/down and Page Up/Down
+    scroll; Ctrl+L clears the screen; Ctrl+U clears to the start of the
+    line; Ctrl+C abandons the line. Anything typed while output runs skips
+    the rest of the output and waits on the next line.
 */
 
 (function () {
@@ -50,6 +70,7 @@
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
   const BLOCKS = new Set(["P", "DIV", "UL", "OL", "PRE", "TABLE", "H1", "H2", "H3", "H4"]);
 
   function el(tag, attrs, ...children) {
@@ -77,7 +98,9 @@
       clearOnCommand: false,
       echo: true,
       typingSpeed: 50,
+      cps: 90,
       cursor: "blink",
+      onEscape: null,
       ...options,
     };
 
@@ -105,18 +128,25 @@
       ready: false,     // false until boot finishes, and while a command runs
       typing: false,    // t.run() is typing into the input
       locked: false,
+      held: false,      // t.hold(): the page has the keyboard
+      busy: 0,          // output or an async command is running
+      skip: false,      // a key or click asked to finish the output at once
       history: [],
       at: 0,            // where up/down is in the history
       draft: "",        // what was typed before walking the history
+      ahead: "",        // typed while output was running, for the next line
     };
 
     const t = {
       el,
-      sleep,
+      sleep: pause,
       print,
+      type,
       clear,
       run,
       submit,
+      hold,
+      release,
       lock,
       setPrompt,
       boot,
@@ -125,18 +155,84 @@
 
     // ---------- Output ----------
 
+    function toNode(line) {
+      if (line instanceof Node) return line.nodeType === 1 && BLOCKS.has(line.tagName) ? line : el("p", null, line);
+      if (line === "" || line == null) return el("div", { class: "blank" });
+      return el("p", null, String(line));
+    }
+
     function print(...lines) {
       if (!lines.length) lines = [""];
-      for (const line of lines) {
-        if (line instanceof Node) {
-          display.append(line.nodeType === 1 && BLOCKS.has(line.tagName) ? line : el("p", null, line));
-        } else if (line === "" || line == null) {
-          display.append(el("div", { class: "blank" }));
-        } else {
-          display.append(el("p", null, String(line)));
-        }
-      }
+      for (const line of lines) display.append(toNode(line));
       toBottom();
+    }
+
+    // ---------- Teletype ----------
+
+    // Output and async commands count as busy. While busy, any key or click
+    // skips: the rest of the output prints at once and pauses end.
+    function busy(on) {
+      state.busy += on ? 1 : -1;
+      if (state.busy === 0) state.skip = false;
+      display.setAttribute("aria-busy", String(state.busy > 0));
+    }
+
+    const skipping = () => state.skip || reduceMotion.matches;
+
+    async function pause(ms) {
+      const until = performance.now() + ms;
+      while (performance.now() < until && !skipping()) await frame();
+    }
+
+    async function type(lines, { cps = o.cps, by = "char", lineDelay = 40, blankDelay = by === "line" ? lineDelay : 120 } = {}) {
+      busy(true);
+      try {
+        for (const line of lines) {
+          const node = toNode(line);
+          if (skipping()) {
+            display.append(node);
+            continue;
+          }
+          if (node.classList?.contains("blank") || by === "line") {
+            display.append(node);
+            toBottom();
+            await pause(node.classList?.contains("blank") ? blankDelay : lineDelay);
+            continue;
+          }
+          // a character at a time, across all of the line's text
+          const texts = [];
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) texts.push(walker.currentNode);
+          const full = texts.map((n) => n.data);
+          const total = full.reduce((sum, text) => sum + text.length, 0);
+          const show = (count) => {
+            for (let i = 0; i < texts.length; i++) {
+              texts[i].data = full[i].slice(0, Math.max(0, count));
+              count -= full[i].length;
+            }
+          };
+          show(0);
+          display.append(node);
+          const start = performance.now();
+          let shown = 0;
+          while (shown < total && !skipping()) {
+            await frame();
+            shown = Math.floor(((performance.now() - start) * cps) / 1000);
+            show(shown);
+            toBottom();
+          }
+          show(total);
+        }
+      } finally {
+        toBottom();
+        busy(false);
+      }
+    }
+
+    for (const kind of ["keydown", "pointerdown"]) {
+      document.addEventListener(kind, (e) => {
+        if (state.busy && !(e.key && ["Shift", "Control", "Alt", "Meta"].includes(e.key))) state.skip = true;
+      }, true);
     }
 
     function clear() {
@@ -161,8 +257,14 @@
     // what the command line is doing: hidden (a command is running), typing
     // on its own (t.run), or waiting for you
     function setReady(ready) {
-      state.ready = ready && !state.locked;
+      state.ready = ready && !state.locked && !state.held;
+      if (state.ready && state.ahead) {
+        input.value += state.ahead;
+        state.ahead = "";
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
       form.classList.toggle("waiting", !state.ready && !state.typing);
+      form.classList.toggle("held", state.held);
       input.readOnly = !state.ready;
       queueCursor();
       toBottom();
@@ -197,10 +299,14 @@
 
       // an async command: hide the input until it's done
       setReady(false);
+      busy(true);
       return result.then(
         (value) => { if (value === false) print(o.unrecognized(name, filtered)); },
         printError,
-      ).finally(() => setReady(true));
+      ).finally(() => {
+        busy(false);
+        setReady(true);
+      });
     }
 
     function printError(error) {
@@ -224,6 +330,18 @@
       state.typing = false;
       await submit(input.value);
       setReady(true);
+    }
+
+    // leave the keyboard to the page (a menu, say) until release()
+    function hold() {
+      state.held = true;
+      setReady(false);
+    }
+
+    function release() {
+      state.held = false;
+      setReady(true);
+      input.focus({ preventScroll: true });
     }
 
     function lock() {
@@ -260,8 +378,8 @@
       cursor.style.animation = "";
     }
 
-    for (const type of ["input", "keydown", "keyup", "focus", "blur", "pointerup", "select"]) {
-      input.addEventListener(type, queueCursor);
+    for (const kind of ["input", "keydown", "keyup", "focus", "blur", "pointerup", "select"]) {
+      input.addEventListener(kind, queueCursor);
     }
     input.addEventListener("input", restartBlink);
     document.addEventListener("selectionchange", queueCursor);
@@ -284,10 +402,31 @@
         screen.scrollTop += (e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 1) * page;
         return;
       }
-      if (!state.ready) return;
+      if (!state.ready) {
+        // type-ahead: keep what's typed while output runs, for the next line
+        if (state.busy && !state.held && !state.locked && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (e.key.length === 1) state.ahead += e.key;
+          else if (e.key === "Backspace") state.ahead = state.ahead.slice(0, -1);
+        }
+        return;
+      }
+
+      if (e.key === "Escape" && !input.value && o.onEscape) {
+        e.preventDefault();
+        o.onEscape(t);
+        return;
+      }
 
       if (e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Ctrl+L clears the screen, Ctrl+C abandons the line
+        // Ctrl+L clears the screen, Ctrl+U clears back to the start of the
+        // line, Ctrl+C abandons the line
+        if (e.key === "u") {
+          e.preventDefault();
+          input.value = input.value.slice(input.selectionEnd);
+          input.setSelectionRange(0, 0);
+          queueCursor();
+          return;
+        }
         if (e.key === "l") {
           e.preventDefault();
           clear();
@@ -319,14 +458,15 @@
 
     // typing anywhere on the page goes to the command line
     document.addEventListener("keydown", (e) => {
-      if (e.target === input || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+      if (!state.ready || e.target === input || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
       if (e.target.closest?.("input, textarea, select, [contenteditable]")) return;
       input.focus({ preventScroll: true });
     });
 
     // a click on the screen goes to the command line, unless you're selecting text
-    screen.addEventListener("click", () => {
-      if (!String(getSelection())) input.focus({ preventScroll: true });
+    screen.addEventListener("click", (e) => {
+      if (state.held || e.target.closest("button, a") || String(getSelection())) return;
+      input.focus({ preventScroll: true });
     });
 
     // keep the command line in sight when a phone's keyboard opens
@@ -359,5 +499,5 @@
     return t;
   }
 
-  window.Terminal = { create, el, sleep };
+  window.Terminal = { create, el, sleep, reduceMotion };
 })();

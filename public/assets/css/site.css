@@ -420,7 +420,8 @@ kbd + br + kbd { margin-top: 0.35rem; }
 }
 
 .try-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
-.try-list .note { color: var(--muted); font-size: 0.9375rem; }
+.try-list .note,
+.commands .note { color: var(--muted); font-size: 0.9375rem; }
 
 /* ---------- Footer ---------- */
 

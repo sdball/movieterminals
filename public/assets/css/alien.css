@@ -21,6 +21,24 @@ p.command {
   margin-bottom: 1em;
 }
 
-.selection_option {
-  border-bottom: 0.12em solid var(--phosphor-bright);
+/* The address matrix: each address is a button, drawn as screen text, and
+   the selected one is underlined the way the film's screen does it */
+.entry {
+  all: unset;
+  cursor: pointer;
+  white-space: pre;
 }
+
+.entry:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.25em;
+}
+
+/* a shadow, not a border, so the underline doesn't push the next row down */
+.selection_option {
+  box-shadow: 0 0.12em 0 var(--phosphor-bright);
+  color: var(--phosphor-bright);
+}
+
+.entry.selection_option:hover { text-decoration: none; }

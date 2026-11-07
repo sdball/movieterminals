@@ -31,6 +31,41 @@
       </div>
     </section>
 
+    <section class="section" aria-labelledby="matrix">
+      <header>
+        <h2 id="matrix">The address matrix</h2>
+        <p class="sub">Where the terminal starts.</p>
+        <p>Like Dallas in the film, you start at the overmonitoring address matrix and pick
+          Interface 2037 to talk to Mother.</p>
+      </header>
+
+      <table class="commands">
+        <thead>
+          <tr><th scope="col">Key</th><th scope="col">What happens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd></td>
+            <td>Move between addresses. A click or tap works too.</td>
+          </tr>
+          <tr>
+            <td><kbd>Return</kbd></td>
+            <td>Open the address. <strong>Interface 2037</strong> opens the inquiry prompt. The others
+              show a readout: try Navigation, Time, Life Support, and Command.</td>
+          </tr>
+          <tr>
+            <td><kbd>Esc</kbd> <span class="note">or</span> <kbd>Address matrix</kbd></td>
+            <td>Back to the matrix, from a readout or from an empty inquiry prompt.</td>
+          </tr>
+          <tr>
+            <td><span class="note">Any key</span></td>
+            <td>Mother answers a character at a time. A key skips to the end of the answer, and
+              what you type waits on the next line.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <section class="section" aria-labelledby="script">
       <header>
         <h2 id="script">From the script</h2>
@@ -121,6 +156,7 @@
 
       <ul class="try-list">
         <li><kbd>Ship status</kbd></li>
+        <li><kbd>Address matrix</kbd> <span class="note">back to the matrix</span></li>
         <li><kbd>Ship name</kbd></li>
         <li><kbd>Emergency command override</kbd> <span class="note">with any number but 100375</span></li>
         <li><kbd>Request enhancement</kbd> <span class="note">outside the script</span></li>
