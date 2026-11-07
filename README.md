@@ -33,8 +33,7 @@ public/
   assets/css/terminal.css    shared by the terminals: layout and the CRT look
   assets/css/alien.css       one film's tokens and tweaks
   assets/css/tron-alan.css
-  assets/js/vendor/          jQuery 1.4.2 and the jQuery Hotkeys plugin
-  assets/js/terminal.js      the terminal engine (keyboard, history, printing)
+  assets/js/terminal.js      the terminal engine (command line, cursor, history, output)
   assets/js/alien.js         one film's commands
   assets/js/tron-alan.js
 scripts/
@@ -54,6 +53,7 @@ like `/assets/...` breaks.
 
 ## Credits
 
-The terminal engine is the xkcd CLI by [Chromakode](https://chromakode.com),
-a jQuery rewrite of CLI2 by Rod McFarland. *Alien* © 20th Century Fox.
+The terminal engine grew out of the xkcd CLI by
+[Chromakode](https://chromakode.com), a jQuery rewrite of CLI2 by Rod
+McFarland. It's since been rewritten without jQuery. *Alien* © 20th Century Fox.
 *TRON* © Walt Disney Productions.

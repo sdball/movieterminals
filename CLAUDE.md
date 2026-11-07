@@ -22,23 +22,32 @@ Phones should work but are second; don't trade desktop quality for them.
 
 ## The terminals
 
-Each terminal page loads, in order: `vendor/jquery-1.4.2.js`,
-`vendor/jquery.hotkeys.js`, `terminal.js` (the engine), then its film's script.
-The film's script makes a shell with `Object.create(TerminalShell)`, sets
-`Terminal.config` (prompt, colors, typing speed), and adds commands.
+`public/assets/js/terminal.js` is the engine: a plain script (no modules, no
+dependencies) that sets `window.Terminal`. Its header comment documents the
+API. Each terminal page loads it, then its film's script, both with `defer`.
+A film's script calls `Terminal.create({...})` with its prompt, commands,
+and a fallback, then `t.boot(...)` with its opening.
 
-- `TerminalShell.commands` is one shared object, so commands a film adds also
-  show up in the default `help`. Alien replaces `help`; TRON uses the default.
-- Alien replaces `Terminal.processInputBuffer` to clear the screen on every
-  command, the way the movie does, and lowercases input with a filter. Most of
-  its commands are matched as whole phrases in `muthur.script.commands` and
-  `muthur.fallback`, not by first word.
-- `print("")` appends an empty `<div>`, and `terminal.css` gives a div a 1em
-  bottom margin, so that's how blank lines happen. Keep that rule.
-- The engine sets the cursor's colors inline from `Terminal.config.fg_color`
-  and `bg_color`. Keep those matching the film's CSS tokens.
-- jQuery 1.4.2 is old but works. Replacing it is in the idea list, not
-  something to do in passing.
+- The command line is a real `<input>` inside `<form id="inputline">`, so
+  phone keyboards, paste, and selection work. The page draws the block
+  cursor (`#cursor`) at the caret; the browser's caret is transparent.
+- Commands get `(t, args, line)`. A command or fallback can be async: the
+  input line hides (but keeps focus, so a phone keyboard stays up) until it
+  finishes. Use that with `t.sleep()` to pace output.
+- `t.print(...lines)` prints each argument as a line. `""` is a blank line
+  (`div.blank`, 1em tall), and an inline node gets its own `<p>`.
+- Alien clears the screen on every command (`clearOnCommand`), lowercases
+  input with a filter, and matches most queries as whole phrases in
+  `SCRIPT` and `fallback()`, not by first word.
+- Each film's script sets `window.term` to its terminal, which is handy in
+  the console: `await term.submit("ship status")`.
+- Keys: Enter submits (the form's submit, so a phone's send key works),
+  up/down walk history, Shift+up/down and Page Up/Down scroll, Ctrl+L
+  clears, Ctrl+C abandons the line. Typing anywhere on the page goes to the
+  command line, and a click on the screen focuses it.
+- Before changing the engine, record each terminal's output for a list of
+  commands and compare after; the screen's text is easy to read back from
+  `#display` in the console.
 
 ## Styles
 

@@ -1,610 +1,363 @@
-/* 	
- Client-side logic for Wordpress CLI theme
- R. McFarland, 2006, 2007, 2008
- http://thrind.xamai.ca/
- 
- jQuery rewrite and overhaul
- Chromakode, 2010
- http://www.chromakode.com/
+/*
+  The terminal engine: a screen of output with a command line under it.
+
+  A plain script, no modules and no dependencies. It sets window.Terminal,
+  and a film's script makes its terminal with Terminal.create({...}).
+
+  The command line is a real <input>, so phone keyboards, paste, selection,
+  and the usual editing keys all work. The browser's caret is hidden and the
+  page draws a block cursor at the caret instead, showing the letter under it
+  in inverse. (The same approach as the Z-Machine Interpreter in the
+  Cabinet of Curiosities.)
+
+  Originally the xkcd CLI by Chromakode, after CLI2 by R. McFarland.
+
+  ---------- Making a terminal ----------
+
+    const t = Terminal.create({
+      prompt: "\n$ ",            // text before the input; "\n" starts a new line
+      commands: { ls(t, args, line) { ... } },  // looked up by the first word
+      fallback(t, line) { ... return true },    // for lines no command took
+      unrecognized: (name, line) => `${name}: command not found`,
+      filters: [(line) => line.toLowerCase()],  // run on a line before parsing
+      clearOnCommand: false,     // wipe the screen on each command (Alien)
+      echo: true,                // print the prompt and command after Enter
+      typingSpeed: 60,           // ms per character for t.run()
+      cursor: "blink",           // or "steady"
+    });
+    t.boot(async (t) => { ... });  // runs once the screen has powered on
+
+  A command may be async. While it runs the input line is hidden, and it
+  comes back when the command finishes, so a command can pace its output:
+
+    async command(t) { t.print("ONE"); await t.sleep(400); t.print("TWO"); }
+
+  ---------- What a terminal can do ----------
+
+    t.print(...lines)   each argument is a line: a string, "" for a blank
+                        line, or a DOM node (inline nodes get a <p> of their own)
+    t.el(tag, attrs, ...children)   make a DOM node
+    t.clear()           wipe the screen
+    t.run(text)         type text into the command line, then press Enter
+    t.submit(text)      run a line as if it was typed (returns a promise)
+    t.sleep(ms)         a promise that resolves after ms
+    t.lock()            shut the terminal down for good
+    t.setPrompt(text)
 */
 
-/**** start from http://snippets.dzone.com/posts/show/701 ****/
-// Removes leading whitespaces
-function ltrim(value) {
-  if (value) {
-    var re = /\s*((\S+\s*)*)/;
-    return value.replace(re, "$1");
+(function () {
+  "use strict";
+
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const BLOCKS = new Set(["P", "DIV", "UL", "OL", "PRE", "TABLE", "H1", "H2", "H3", "H4"]);
+
+  function el(tag, attrs, ...children) {
+    const node = document.createElement(tag);
+    if (typeof attrs === "string" || attrs instanceof Node) children.unshift(attrs);
+    else if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) {
+        if (key === "class") node.className = value;
+        else node.setAttribute(key, value);
+      }
+    }
+    for (const child of children.flat()) {
+      if (child != null) node.append(child instanceof Node ? child : String(child));
+    }
+    return node;
   }
-  return "";
-}
 
-// Removes ending whitespaces
-function rtrim(value) {
-  if (value) {
-    var re = /((\s*\S+)*)\s*/;
-    return value.replace(re, "$1");
-  }
-  return "";
-}
+  function create(options) {
+    const o = {
+      prompt: "$ ",
+      commands: {},
+      fallback: null,
+      unrecognized: (name) => `${name}: command not found`,
+      filters: [],
+      clearOnCommand: false,
+      echo: true,
+      typingSpeed: 50,
+      cursor: "blink",
+      ...options,
+    };
 
-// Removes leading and ending whitespaces
-function trim(value) {
-  if (value) {
-    return ltrim(rtrim(value));
-  }
-  return "";
-} /**** end from http://snippets.dzone.com/posts/show/701 ****/
+    const screen = document.getElementById("screen");
+    const display = document.getElementById("display");
+    const form = document.getElementById("inputline");
+    const lead = form.querySelector(".prompt-lead");
+    const promptEl = form.querySelector(".prompt");
+    const input = document.getElementById("command");
+    const cursor = document.getElementById("cursor");
 
-function entityEncode(str) {
-  str = str.replace(/&/g, "&amp;");
-  str = str.replace(/</g, "&lt;");
-  str = str.replace(/>/g, "&gt;");
-  str = str.replace(/  /g, " &nbsp;");
-  if (/msie/i.test(navigator.userAgent)) {
-    str = str.replace("\n", "&nbsp;<br />");
-  } else {
-    str = str.replace(/\x0D/g, "&nbsp;<br />");
-  }
-  return str;
-}
+    // the built-in commands, which a film's own commands can replace
+    const commands = {
+      help(t) {
+        t.print(el("h3", "help"), el("ul", null, Object.keys(commands).map((name) => el("li", name))));
+      },
+      clear(t) {
+        t.clear();
+      },
+      ...o.commands,
+    };
 
-var TerminalShell = {
-  commands: {
-    help: function help(terminal) {
-      terminal.print($("<h3>help</h3>"));
-      cmd_list = $("<ul>");
-      $.each(this.commands, function (name, func) {
-        cmd_list.append($("<li>").text(name));
-      });
-      terminal.print(cmd_list);
-    },
-    clear: function (terminal) {
-      terminal.clear();
-    },
-  },
-  filters: [],
-  fallback: null,
+    const state = {
+      prompt: "",
+      ready: false,     // false until boot finishes, and while a command runs
+      typing: false,    // t.run() is typing into the input
+      locked: false,
+      history: [],
+      at: 0,            // where up/down is in the history
+      draft: "",        // what was typed before walking the history
+    };
 
-  lastCommand: null,
-  process: function (terminal, cmd) {
-    try {
-      $.each(
-        this.filters,
-        $.proxy(function (index, filter) {
-          cmd = filter.call(this, terminal, cmd);
-        }, this)
-      );
-      var cmd_args = cmd.split(" ");
-      var cmd_name = cmd_args.shift();
-      cmd_args.unshift(terminal);
-      if (this.commands.hasOwnProperty(cmd_name)) {
-        this.commands[cmd_name].apply(this, cmd_args);
-      } else {
-        if (!(this.fallback && this.fallback(terminal, cmd))) {
-          terminal.print(Terminal.config.unrecognized);
+    const t = {
+      el,
+      sleep,
+      print,
+      clear,
+      run,
+      submit,
+      lock,
+      setPrompt,
+      boot,
+      get input() { return input; },
+    };
+
+    // ---------- Output ----------
+
+    function print(...lines) {
+      if (!lines.length) lines = [""];
+      for (const line of lines) {
+        if (line instanceof Node) {
+          display.append(line.nodeType === 1 && BLOCKS.has(line.tagName) ? line : el("p", null, line));
+        } else if (line === "" || line == null) {
+          display.append(el("div", { class: "blank" }));
+        } else {
+          display.append(el("p", null, String(line)));
         }
       }
-      this.lastCommand = cmd;
-    } catch (e) {
-      terminal.print(
-        $("<p>")
-          .addClass("error")
-          .text("An internal error occured: " + e)
-      );
-      terminal.setWorking(false);
-    }
-  },
-};
-
-var Terminal = {
-  buffer: "",
-  pos: 0,
-  history: [],
-  historyPos: 0,
-  promptActive: true,
-  cursorBlinkState: true,
-  _cursorBlinkTimeout: null,
-  spinnerIndex: 0,
-  _spinnerTimeout: null,
-
-  output: TerminalShell,
-
-  config: {
-    scrollStep: 20,
-    scrollSpeed: 100,
-    bg_color: "#000",
-    fg_color: "#FFF",
-    cursor_blink_time: 700,
-    cursor_style: "block",
-    prompt: "guest@xkcd:/$ ",
-    spinnerCharacters: ["[   ]", "[.  ]", "[.. ]", "[...]"],
-    spinnerSpeed: 250,
-    typingSpeed: 50,
-    unrecognized: 'Unrecognized command. Type "help" for assistance.',
-    name: "default",
-  },
-
-  sticky: {
-    keys: {
-      ctrl: false,
-      alt: false,
-      scroll: false,
-    },
-
-    set: function (key, state) {
-      this.keys[key] = state;
-      $("#" + key + "-indicator").toggle(this.keys[key]);
-    },
-
-    toggle: function (key) {
-      this.set(key, !this.keys[key]);
-    },
-
-    reset: function (key) {
-      this.set(key, false);
-    },
-
-    resetAll: function (key) {
-      $.each(
-        this.keys,
-        $.proxy(function (name, value) {
-          this.reset(name);
-        }, this)
-      );
-    },
-  },
-
-  init: function () {
-    function ifActive(func) {
-      return function () {
-        if (Terminal.promptActive) {
-          func.apply(this, arguments);
-        }
-      };
+      toBottom();
     }
 
-    $(document)
-      .keypress(
-        $.proxy(
-          ifActive(function (e) {
-            if (e.which >= 32 && e.which <= 126) {
-              var character = String.fromCharCode(e.which);
-              var letter = character.toLowerCase();
-            } else {
-              return;
-            }
+    function clear() {
+      display.replaceChildren();
+    }
 
-            if ($.browser.opera && !/[\w\s]/.test(character)) {
-              return; // sigh.
-            }
+    function toBottom() {
+      screen.scrollTop = screen.scrollHeight;
+    }
 
-            if (this.sticky.keys.ctrl) {
-              if (letter == "w") {
-                this.deleteWord();
-              } else if (letter == "h") {
-                Terminal.deleteCharacter(false);
-              } else if (letter == "l") {
-                this.clear();
-              } else if (letter == "a") {
-                this.setPos(0);
-              } else if (letter == "e") {
-                this.setPos(this.buffer.length);
-              } else if (letter == "d") {
-                this.runCommand("logout");
-              }
-            } else {
-              if (character) {
-                this.addCharacter(character);
-                e.preventDefault();
-              }
-            }
-          }),
-          this
-        )
-      )
-      .bind(
-        "keydown",
-        "return",
-        ifActive(function (e) {
-          Terminal.processInputBuffer();
-        })
-      )
-      .bind(
-        "keydown",
-        "backspace",
-        ifActive(function (e) {
-          e.preventDefault();
-          Terminal.deleteCharacter(e.shiftKey);
-        })
-      )
-      .bind(
-        "keydown",
-        "del",
-        ifActive(function (e) {
-          Terminal.deleteCharacter(true);
-        })
-      )
-      .bind(
-        "keydown",
-        "left",
-        ifActive(function (e) {
-          Terminal.moveCursor(-1);
-        })
-      )
-      .bind(
-        "keydown",
-        "right",
-        ifActive(function (e) {
-          Terminal.moveCursor(1);
-        })
-      )
-      .bind(
-        "keydown",
-        "up",
-        ifActive(function (e) {
-          e.preventDefault();
-          if (e.shiftKey || Terminal.sticky.keys.scroll) {
-            Terminal.scrollLine(-1);
-          } else if (e.ctrlKey || Terminal.sticky.keys.ctrl) {
-            Terminal.scrollPage(-1);
-          } else {
-            Terminal.moveHistory(-1);
-          }
-        })
-      )
-      .bind(
-        "keydown",
-        "down",
-        ifActive(function (e) {
-          e.preventDefault();
-          if (e.shiftKey || Terminal.sticky.keys.scroll) {
-            Terminal.scrollLine(1);
-          } else if (e.ctrlKey || Terminal.sticky.keys.ctrl) {
-            Terminal.scrollPage(1);
-          } else {
-            Terminal.moveHistory(1);
-          }
-        })
-      )
-      .bind(
-        "keydown",
-        "pageup",
-        ifActive(function (e) {
-          Terminal.scrollPage(-1);
-        })
-      )
-      .bind(
-        "keydown",
-        "pagedown",
-        ifActive(function (e) {
-          Terminal.scrollPage(1);
-        })
-      )
-      .bind(
-        "keydown",
-        "home",
-        ifActive(function (e) {
-          e.preventDefault();
-          if (e.ctrlKey || Terminal.sticky.keys.ctrl) {
-            Terminal.jumpToTop();
-          } else {
-            Terminal.setPos(0);
-          }
-        })
-      )
-      .bind(
-        "keydown",
-        "end",
-        ifActive(function (e) {
-          e.preventDefault();
-          if (e.ctrlKey || Terminal.sticky.keys.ctrl) {
-            Terminal.jumpToBottom();
-          } else {
-            Terminal.setPos(Terminal.buffer.length);
-          }
-        })
-      )
-      .bind("keydown", "tab", function (e) {
-        e.preventDefault();
-      })
-      .keyup(function (e) {
-        var keyName = $.hotkeys.specialKeys[e.which];
-        if (keyName in { ctrl: true, alt: true, scroll: true }) {
-          Terminal.sticky.toggle(keyName);
-        } else if (
-          !(keyName in { left: true, right: true, up: true, down: true })
-        ) {
-          Terminal.sticky.resetAll();
-        }
-      });
+    // ---------- The command line ----------
 
-    $(window).resize(function (e) {
-      $("#screen").scrollTop($("#screen").attr("scrollHeight"));
+    // Lines before the last "\n" sit above the input; the last line is the
+    // input's label, on the same line as what you type.
+    function setPrompt(text) {
+      state.prompt = text;
+      const lines = text.split("\n");
+      promptEl.textContent = lines.pop();
+      lead.replaceChildren(...lines.map((line) => el("div", null, line || " ")));
+    }
+
+    // what the command line is doing: hidden (a command is running), typing
+    // on its own (t.run), or waiting for you
+    function setReady(ready) {
+      state.ready = ready && !state.locked;
+      form.classList.toggle("waiting", !state.ready && !state.typing);
+      input.readOnly = !state.ready;
+      queueCursor();
+      toBottom();
+    }
+
+    function submit(text) {
+      if (state.locked) return Promise.resolve();
+      const line = text.trim();
+      input.value = "";
+      if (line && line !== state.history[state.history.length - 1]) state.history.push(line);
+      state.at = state.history.length;
+      state.draft = "";
+
+      if (o.clearOnCommand) clear();
+      else if (o.echo) display.append(el("p", { class: "command" }, state.prompt + text));
+      if (!line) {
+        toBottom();
+        return Promise.resolve();
+      }
+
+      const filtered = o.filters.reduce((acc, filter) => filter(acc), line);
+      const [name, ...args] = filtered.split(/\s+/);
+      let result;
+      try {
+        if (Object.hasOwn(commands, name)) result = commands[name](t, args, filtered);
+        else if (!(o.fallback && (result = o.fallback(t, filtered)))) print(o.unrecognized(name, filtered));
+      } catch (error) {
+        printError(error);
+      }
+      toBottom();
+      if (!result || typeof result.then !== "function") return Promise.resolve();
+
+      // an async command: hide the input until it's done
+      setReady(false);
+      return result.then(
+        (value) => { if (value === false) print(o.unrecognized(name, filtered)); },
+        printError,
+      ).finally(() => setReady(true));
+    }
+
+    function printError(error) {
+      console.error(error);
+      print(el("p", { class: "error" }, `An internal error occurred: ${error}`));
+    }
+
+    // type text into the command line a letter at a time, then press Enter
+    async function run(text) {
+      state.typing = true;
+      setReady(false);
+      input.value = "";
+      for (const ch of text) {
+        await sleep(o.typingSpeed);
+        input.value += ch;
+        input.setSelectionRange(input.value.length, input.value.length);
+        restartBlink();
+        queueCursor();
+      }
+      await sleep(o.typingSpeed);
+      state.typing = false;
+      await submit(input.value);
+      setReady(true);
+    }
+
+    function lock() {
+      state.locked = true;
+      setReady(false);
+      screen.classList.add("locked");
+    }
+
+    // ---------- The cursor ----------
+    // The page draws it: a block at the caret, showing the letter under it in
+    // inverse, steady while you type and hidden for a selection.
+
+    let cursorFrame = 0;
+    function placeCursor() {
+      cursorFrame = 0;
+      const at = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? at;
+      cursor.hidden = at !== end;
+      if (cursor.hidden) return;
+      cursor.textContent = input.value[at] || " ";
+      const cell = cursor.getBoundingClientRect().width;
+      const x = Math.max(0, Math.min(at * cell - input.scrollLeft, input.clientWidth - cell));
+      cursor.style.transform = `translateX(${x}px)`;
+    }
+
+    function queueCursor() {
+      if (!cursorFrame) cursorFrame = requestAnimationFrame(placeCursor);
+    }
+
+    // start each blink from on, so the cursor stays lit while you type
+    function restartBlink() {
+      cursor.style.animation = "none";
+      void cursor.offsetWidth;
+      cursor.style.animation = "";
+    }
+
+    for (const type of ["input", "keydown", "keyup", "focus", "blur", "pointerup", "select"]) {
+      input.addEventListener(type, queueCursor);
+    }
+    input.addEventListener("input", restartBlink);
+    document.addEventListener("selectionchange", queueCursor);
+    addEventListener("resize", queueCursor);
+    document.fonts?.ready.then(queueCursor);
+
+    // ---------- Keys ----------
+
+    // the form submits on Enter, including a phone keyboard's send key
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (state.ready) submit(input.value);
     });
 
-    this.setCursorState(true);
-    this.setWorking(false);
-    $("#prompt").html(this.config.prompt);
-    $("#screen")
-      .hide()
-      .fadeIn("fast", function () {
-        $("#screen").triggerHandler("cli-load");
-      });
-  },
-
-  setCursorState: function (state, fromTimeout) {
-    this.cursorBlinkState = state;
-    if (this.config.cursor_style == "block") {
-      if (state) {
-        $("#cursor").css({
-          color: this.config.bg_color,
-          backgroundColor: this.config.fg_color,
-        });
-      } else {
-        $("#cursor").css({ color: this.config.fg_color, background: "none" });
+    input.addEventListener("keydown", (e) => {
+      // Shift+arrows and Page Up/Down scroll back through the output
+      if ((e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) || e.key === "PageUp" || e.key === "PageDown") {
+        e.preventDefault();
+        const page = e.key.startsWith("Page") ? screen.clientHeight * 0.75 : parseFloat(getComputedStyle(screen).lineHeight) || 24;
+        screen.scrollTop += (e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 1) * page;
+        return;
       }
-    } else {
-      if (state) {
-        $("#cursor").css("textDecoration", "underline");
-      } else {
-        $("#cursor").css("textDecoration", "none");
-      }
-    }
+      if (!state.ready) return;
 
-    // (Re)schedule next blink.
-    if (!fromTimeout && this._cursorBlinkTimeout) {
-      window.clearTimeout(this._cursorBlinkTimeout);
-      this._cursorBlinkTimeout = null;
-    }
-    this._cursorBlinkTimeout = window.setTimeout(
-      $.proxy(function () {
-        this.setCursorState(!this.cursorBlinkState, true);
-      }, this),
-      this.config.cursor_blink_time
-    );
-  },
-
-  updateInputDisplay: function () {
-    var left = "",
-      underCursor = " ",
-      right = "";
-
-    if (this.pos < 0) {
-      this.pos = 0;
-    }
-    if (this.pos > this.buffer.length) {
-      this.pos = this.buffer.length;
-    }
-    if (this.pos > 0) {
-      left = this.buffer.substr(0, this.pos);
-    }
-    if (this.pos < this.buffer.length) {
-      underCursor = this.buffer.substr(this.pos, 1);
-    }
-    if (this.buffer.length - this.pos > 1) {
-      right = this.buffer.substr(
-        this.pos + 1,
-        this.buffer.length - this.pos - 1
-      );
-    }
-
-    $("#lcommand").text(left);
-    $("#cursor").text(underCursor);
-    if (underCursor == " ") {
-      $("#cursor").html("&nbsp;");
-    }
-    $("#rcommand").text(right);
-    $("#prompt").text(this.config.prompt);
-    return;
-  },
-
-  clearInputBuffer: function () {
-    this.buffer = "";
-    this.pos = 0;
-    this.updateInputDisplay();
-  },
-
-  clear: function () {
-    $("#display").html("");
-  },
-
-  addCharacter: function (character) {
-    var left = this.buffer.substr(0, this.pos);
-    var right = this.buffer.substr(this.pos, this.buffer.length - this.pos);
-    this.buffer = left + character + right;
-    this.pos++;
-    this.updateInputDisplay();
-    this.setCursorState(true);
-  },
-
-  deleteCharacter: function (forward) {
-    var offset = forward ? 1 : 0;
-    if (this.pos >= 1 - offset) {
-      var left = this.buffer.substr(0, this.pos - 1 + offset);
-      var right = this.buffer.substr(
-        this.pos + offset,
-        this.buffer.length - this.pos - offset
-      );
-      this.buffer = left + right;
-      this.pos -= 1 - offset;
-      this.updateInputDisplay();
-    }
-    this.setCursorState(true);
-  },
-
-  deleteWord: function () {
-    if (this.pos > 0) {
-      var ncp = this.pos;
-      while (ncp > 0 && this.buffer.charAt(ncp) !== " ") {
-        ncp--;
-      }
-      left = this.buffer.substr(0, ncp - 1);
-      right = this.buffer.substr(ncp, this.buffer.length - this.pos);
-      this.buffer = left + right;
-      this.pos = ncp;
-      this.updateInputDisplay();
-    }
-    this.setCursorState(true);
-  },
-
-  moveCursor: function (val) {
-    this.setPos(this.pos + val);
-  },
-
-  setPos: function (pos) {
-    if (pos >= 0 && pos <= this.buffer.length) {
-      this.pos = pos;
-      Terminal.updateInputDisplay();
-    }
-    this.setCursorState(true);
-  },
-
-  moveHistory: function (val) {
-    var newpos = this.historyPos + val;
-    if (newpos >= 0 && newpos <= this.history.length) {
-      if (newpos == this.history.length) {
-        this.clearInputBuffer();
-      } else {
-        this.buffer = this.history[newpos];
-      }
-      this.pos = this.buffer.length;
-      this.historyPos = newpos;
-      this.updateInputDisplay();
-      this.jumpToBottom();
-    }
-    this.setCursorState(true);
-  },
-
-  addHistory: function (cmd) {
-    this.historyPos = this.history.push(cmd);
-  },
-
-  jumpToBottom: function () {
-    $("#screen").animate(
-      { scrollTop: $("#screen").attr("scrollHeight") },
-      this.config.scrollSpeed,
-      "linear"
-    );
-  },
-
-  jumpToTop: function () {
-    $("#screen").animate({ scrollTop: 0 }, this.config.scrollSpeed, "linear");
-  },
-
-  scrollPage: function (num) {
-    $("#screen").animate(
-      {
-        scrollTop:
-          $("#screen").scrollTop() + num * ($("#screen").height() * 0.75),
-      },
-      this.config.scrollSpeed,
-      "linear"
-    );
-  },
-
-  scrollLine: function (num) {
-    $("#screen").scrollTop(
-      $("#screen").scrollTop() + num * this.config.scrollStep
-    );
-  },
-
-  print: function (text) {
-    if (!text) {
-      $("#display").append($("<div>"));
-    } else if (text instanceof jQuery) {
-      $("#display").append(text);
-    } else {
-      var av = Array.prototype.slice.call(arguments, 0);
-      $("#display").append($("<p>").text(av.join(" ")));
-    }
-    this.jumpToBottom();
-  },
-
-  processInputBuffer: function (cmd) {
-    this.print(
-      $("<p>")
-        .addClass("command")
-        .text(this.config.prompt + this.buffer)
-    );
-    var cmd = trim(this.buffer);
-    if (window._gaq)
-      _gaq.push([
-        "_trackEvent",
-        "Terminal Command",
-        Terminal.config.name,
-        cmd.toLowerCase(),
-      ]);
-    this.clearInputBuffer();
-    if (cmd.length == 0) {
-      return false;
-    }
-    this.addHistory(cmd);
-    if (this.output) {
-      return this.output.process(this, cmd);
-    } else {
-      return false;
-    }
-  },
-
-  setPromptActive: function (active) {
-    this.promptActive = active;
-    $("#inputline").toggle(this.promptActive);
-  },
-
-  setWorking: function (working) {
-    if (working && !this._spinnerTimeout) {
-      $("#display .command:last-child")
-        .add("#bottomline")
-        .first()
-        .append($("#spinner"));
-      this._spinnerTimeout = window.setInterval(
-        $.proxy(function () {
-          if (!$("#spinner").is(":visible")) {
-            $("#spinner").fadeIn();
-          }
-          this.spinnerIndex =
-            (this.spinnerIndex + 1) % this.config.spinnerCharacters.length;
-          $("#spinner").text(this.config.spinnerCharacters[this.spinnerIndex]);
-        }, this),
-        this.config.spinnerSpeed
-      );
-      this.setPromptActive(false);
-      $("#screen").triggerHandler("cli-busy");
-    } else if (!working && this._spinnerTimeout) {
-      clearInterval(this._spinnerTimeout);
-      this._spinnerTimeout = null;
-      $("#spinner").fadeOut();
-      this.setPromptActive(true);
-      $("#screen").triggerHandler("cli-ready");
-    }
-  },
-
-  runCommand: function (text) {
-    var index = 0;
-    var mine = false;
-
-    this.promptActive = false;
-    var interval = window.setInterval(
-      $.proxy(function typeCharacter() {
-        if (index < text.length) {
-          this.addCharacter(text.charAt(index));
-          index += 1;
-        } else {
-          clearInterval(interval);
-          this.promptActive = true;
-          this.processInputBuffer();
+      if (e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Ctrl+L clears the screen, Ctrl+C abandons the line
+        if (e.key === "l") {
+          e.preventDefault();
+          clear();
+          return;
         }
-      }, this),
-      this.config.typingSpeed
-    );
-  },
-};
+        if (e.key === "c" && input.selectionStart === input.selectionEnd) {
+          e.preventDefault();
+          if (!o.clearOnCommand) display.append(el("p", { class: "command" }, state.prompt + input.value + "^C"));
+          input.value = "";
+          state.at = state.history.length;
+          toBottom();
+          return;
+        }
+      }
 
-$(document).ready(function () {
-  $("#welcome").show();
-  // Kill Opera's backspace keyboard action.
-  document.onkeydown = document.onkeypress = function (e) {
-    return $.hotkeys.specialKeys[e.keyCode] != "backspace";
-  };
-  Terminal.init();
-});
+      // walk back and forth through what you typed before
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const h = state.history;
+        if (state.at === h.length) state.draft = input.value;
+        state.at = Math.max(0, Math.min(h.length, state.at + (e.key === "ArrowUp" ? -1 : 1)));
+        input.value = state.at === h.length ? state.draft : h[state.at];
+        requestAnimationFrame(() => {
+          input.setSelectionRange(input.value.length, input.value.length);
+          queueCursor();
+        });
+      }
+    });
+
+    // typing anywhere on the page goes to the command line
+    document.addEventListener("keydown", (e) => {
+      if (e.target === input || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+      if (e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+      input.focus({ preventScroll: true });
+    });
+
+    // a click on the screen goes to the command line, unless you're selecting text
+    screen.addEventListener("click", () => {
+      if (!String(getSelection())) input.focus({ preventScroll: true });
+    });
+
+    // keep the command line in sight when a phone's keyboard opens
+    const vv = window.visualViewport;
+    function fitViewport() {
+      if (!vv) return;
+      document.documentElement.style.setProperty("--viewport-height", `${vv.height}px`);
+      if (document.activeElement === input) toBottom();
+    }
+    vv?.addEventListener("resize", fitViewport);
+    input.addEventListener("focus", () => setTimeout(fitViewport, 300));
+
+    // ---------- Boot ----------
+
+    // wait for the font and the power-on, run the film's opening, then hand
+    // over the keyboard
+    async function boot(opening) {
+      setReady(false);
+      await Promise.race([document.fonts?.ready, sleep(1500)]);
+      if (!reduceMotion.matches) await sleep(550);
+      if (!matchMedia("(pointer: coarse)").matches) input.focus({ preventScroll: true });
+      if (opening) await opening(t);
+      setReady(true);
+    }
+
+    screen.dataset.cursor = o.cursor;
+    form.hidden = false;
+    setPrompt(o.prompt);
+    setReady(false);
+    return t;
+  }
+
+  window.Terminal = { create, el, sleep };
+})();

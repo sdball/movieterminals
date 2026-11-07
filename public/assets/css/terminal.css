@@ -1,6 +1,6 @@
 /*
   Shared by every terminal page. A terminal's own stylesheet sets the tokens
-  below, and the engine in terminal.js fills #display and #bottomline.
+  below, and the engine in terminal.js fills #display and drives #inputline.
 
   Based on the CLI 2.0 stylesheet by R. McFarland, as reworked by Chromakode
   for the xkcd CLI.
@@ -33,7 +33,8 @@ body {
 body {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* the engine sets --viewport-height when a phone's keyboard takes room */
+  height: var(--viewport-height, 100dvh);
   margin: 0;
   overflow: hidden;
   background: var(--screen);
@@ -52,10 +53,14 @@ body {
   max-width: var(--width);
   margin: 0 auto;
   padding: var(--top) 16px 1em;
-  overflow: hidden; /* the engine scrolls it */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
   text-shadow: 0 0 0.12em var(--glow), 0 0 0.7em var(--bloom);
   transform-origin: 50% 50%;
 }
+
+#screen::-webkit-scrollbar { display: none; }
 
 #screen p,
 #screen div,
@@ -68,17 +73,15 @@ body {
   color: inherit;
 }
 
-/* print("") appends an empty div, so a div's margin is a blank line */
-#screen div,
-#screen table {
-  margin: 0 0 1em;
-}
-
 #screen p,
 #screen ul,
-#display {
+#screen pre,
+#screen table {
   margin: 0;
 }
+
+/* print("") */
+#display .blank { height: 1em; }
 
 #screen p,
 #screen span,
@@ -115,23 +118,83 @@ body {
 #screen table { border-collapse: collapse; }
 #screen td { padding: 0 1em; }
 
-#prompt { color: var(--phosphor-bright); }
+/* ---------- The command line ---------- */
 
-/* The engine sets the cursor's colors inline as it blinks */
-#cursor {
-  font-weight: normal;
-  background: var(--phosphor-bright);
-  color: var(--screen);
+#inputline { margin: 0 0 1em; }
+
+/* hidden while a command runs, but still focused, so a phone's keyboard stays up */
+#inputline.waiting { opacity: 0; }
+
+.prompt-line {
+  display: flex;
+  align-items: baseline;
 }
 
-/* Typing on a phone goes through this, so keep it out of sight but typeable */
-#lcommand { outline: none; caret-color: transparent; }
+.prompt { color: var(--phosphor-bright); white-space: pre; }
 
-#spinner {
-  display: none;
-  margin-left: 1em;
-  font-weight: bold;
-  line-height: 0;
+.field {
+  position: relative;
+  flex: 1;
+  min-width: 2ch;
+}
+
+#command {
+  all: unset;
+  display: block;
+  width: 100%;
+  caret-color: transparent;
+  white-space: pre;
+}
+
+#command::selection,
+#screen ::selection {
+  background: var(--phosphor);
+  color: var(--screen);
+  text-shadow: none;
+}
+
+/* The page draws the cursor: a block over the letter at the caret */
+#cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1ch;
+  height: 100%;
+  background: var(--phosphor-bright);
+  color: var(--screen);
+  text-shadow: none;
+  white-space: pre;
+  pointer-events: none;
+}
+
+#cursor[hidden] { display: none; }
+
+/* away from the keyboard, the cursor goes hollow */
+.field:not(:focus-within) #cursor {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 0.08em var(--phosphor-bright);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #screen[data-cursor="blink"] .field:focus-within #cursor {
+    animation: blink 1.4s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% { background: transparent; color: inherit; }
+  }
+}
+
+/* phones zoom into an input with small type, so keep it at least 16px */
+@media (pointer: coarse) {
+  #command, #cursor { font-size: max(16px, 1em); }
+}
+
+/* t.lock(): the screen goes dark */
+#screen.locked #display {
+  opacity: 0;
+  transition: opacity 1.6s ease-in 0.4s;
 }
 
 /* ---------- The glass ---------- */

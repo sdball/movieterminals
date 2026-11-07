@@ -13,23 +13,23 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap">
   <link rel="stylesheet" href="../assets/css/terminal.css">
   <link rel="stylesheet" href="../assets/css/tron-alan.css">
-  <script src="../assets/js/vendor/jquery-1.4.2.js"></script>
-  <script src="../assets/js/vendor/jquery.hotkeys.js"></script>
-  <script src="../assets/js/terminal.js"></script>
-  <script src="../assets/js/tron-alan.js"></script>
+  <script src="../assets/js/terminal.js" defer></script>
+  <script src="../assets/js/tron-alan.js" defer></script>
 </head>
 
 <body>
   <div id="screen">
-    <div id="display">
+    <div id="display" role="log" aria-label="Terminal output">
       <noscript>
         <p>ADDRESS FILE EMPTY<br>TRON PROGRAM UNAVAILABLE<br>JAVASCRIPT REQUIRED FOR TERMINAL ACCESS</p>
       </noscript>
     </div>
-    <div id="bottomline">
-      <span id="inputline"><span id="prompt"></span><span id="lcommand" contenteditable=""></span><span
-          id="cursor">&nbsp;</span><span id="rcommand"></span></span><span id="spinner"></span>
-    </div>
+    <form id="inputline" autocomplete="off" hidden>
+      <div class="prompt-lead"></div>
+      <label class="prompt-line"><span class="prompt"></span><span class="field"><input id="command" type="text"
+            aria-label="Command" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+            enterkeyhint="send"><span id="cursor" aria-hidden="true"></span></span></label>
+    </form>
   </div>
   <img src="../assets/images/tron/encom_small.png" id="encom" alt="ENCOM" width="149" height="50">
   <footer id="credit">
@@ -37,7 +37,7 @@
       <a href="../">Movie Terminals</a>
       <a href="reference/">Command reference</a>
     </nav>
-    <p><cite>TRON</cite> &copy; Walt Disney Productions, 1982. Terminal from the xkcd CLI by
+    <p><cite>TRON</cite> &copy; Walt Disney Productions, 1982. Terminal based on the xkcd CLI by
       <a href="https://chromakode.com">Chromakode</a>, after CLI2 by Rod McFarland.
       <a href="https://github.com/sdball/movieterminals">Source</a>.</p>
   </footer>

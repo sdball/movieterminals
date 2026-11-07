@@ -15,7 +15,7 @@
 /* Keep the text clear of the ENCOM logo */
 @media (min-width: 720px) {
   #display,
-  #bottomline { padding-right: 170px; }
+  #inputline { padding-right: 170px; }
 }
 
 #encom {

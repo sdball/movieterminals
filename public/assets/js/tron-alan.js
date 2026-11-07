@@ -1,169 +1,87 @@
-var alanone = Object.create(TerminalShell);
-Terminal.config.prompt = "\n$ ";
-Terminal.config.unrecognized = "command not found";
-Terminal.config.typingSpeed = 60;
-Terminal.config.spinnerCharacters = [];
-Terminal.config.name = "tron-alan";
-Terminal.config.bg_color = "#000205";
-Terminal.config.fg_color = "#98d9f7";
-Terminal.config.cursor_blink_time = 500;
-Terminal.output = alanone;
+/*
+  Alan's terminal at ENCOM in TRON (1982). The film shows it only briefly,
+  so most of this imagines ENCOM's developer terminals as a Unix of the
+  "future".
+*/
 
-Terminal.setCursorState = function () {
-  $("#cursor").css({
-    color: this.config.bg_color,
-    backgroundColor: this.config.fg_color,
-  });
-};
+(function () {
+  "use strict";
 
-alanone.terminal = Terminal;
-alanone.tron_dir = {
-  path: "/home/alan1/projects/tron",
-  files: {
-    "tron.c": {
-      type: "file",
-      read: function () {
-        alanone.terminal.print("FILE LISTING UNAVAILABLE");
-        alanone.terminal.print("PROGRAM LOCKED BY MCP");
-      },
+  const ROY = "My new control system isn't a mind reader. -Roy";
+
+  // ---------- Files ----------
+
+  const home = {
+    path: "/home/alan1/projects/tron",
+    files: {
+      "tron.c": ["FILE LISTING UNAVAILABLE", "PROGRAM LOCKED BY MCP"],
     },
-  },
-};
-alanone.current_dir = alanone.tron_dir;
+  };
 
-alanone.commands["ls"] = function () {
-  var cmd_args = Array.prototype.slice.call(arguments);
-  cmd_args.shift();
-  if (!cmd_args[0]) {
-    var filelist = [];
-    $.each(alanone.current_dir.files, function (name, obj) {
-      if (obj.type == "dir") {
-        filelist.push("/" + name);
-      } else {
-        filelist.push(name);
+  // ---------- The clock ----------
+  // Alan's clock reads 6:32:03 PM EDT, Wednesday 22 September 1982, when you
+  // sit down, and runs from there. Everyone gets the same time, wherever
+  // they are.
+
+  const EDT = -4 * 60 * 60 * 1000;
+  const sitDown = Date.now();
+  const filmTime = Date.UTC(1982, 8, 22, 18, 32, 3) - EDT;
+
+  function timestamp(ms) {
+    const d = new Date(ms + EDT); // read with the UTC getters, this is EDT
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const two = (n) => String(n).padStart(2, "0");
+    const time = `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())}`;
+    return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${two(d.getUTCDate())} ${d.getUTCFullYear()} ${time} GMT-0400 (EDT)`;
+  }
+
+  // ---------- Commands ----------
+
+  const commands = {
+    ls(t, args) {
+      for (const name of args) {
+        if (!Object.hasOwn(home.files, name)) return t.print(`ls: ${name}: No such file or directory`);
       }
-    });
-    alanone.terminal.print(filelist);
-  }
-};
-alanone.commands["cat"] = function () {
-  var cmd_args = Array.prototype.slice.call(arguments);
-  cmd_args.shift();
-  if (!cmd_args[0]) {
-    alanone.terminal.print("USAGE: CAT [FILENAME]");
-    return;
-  }
-  if (cmd_args[0] in alanone.current_dir.files) {
-    alanone.current_dir.files[cmd_args[0]].read();
-  }
-};
-alanone.commands["pwd"] = function () {
-  alanone.terminal.print(alanone.current_dir.path);
-};
-alanone.commands["service"] = function () {
-  var cmd_args = Array.prototype.slice.call(arguments);
-  cmd_args.shift();
-  if (!cmd_args[0]) {
-    alanone.terminal.print("USAGE: SERVICE [START|STOP] [COMMAND]");
-    alanone.terminal.print("My new control system isn't a mind reader. -Roy");
-    return;
-  }
-  switch (cmd_args[0]) {
-    case "start":
-      if (cmd_args[1]) {
-        alanone.start_service(cmd_args[1]);
-      } else {
-        alanone.terminal.print("USAGE: SERVICE START [COMMAND]");
-        alanone.terminal.print(
-          "My new control system isn't a mind reader. -Roy"
-        );
+      t.print((args.length ? args : Object.keys(home.files)).join(" "));
+    },
+
+    cat(t, [name]) {
+      if (!name) return t.print("USAGE: CAT [FILENAME]");
+      if (!Object.hasOwn(home.files, name)) return t.print(`cat: ${name}: No such file or directory`);
+      t.print(...home.files[name]);
+    },
+
+    pwd(t) {
+      t.print(home.path);
+    },
+
+    service(t, [action, name]) {
+      if (action !== "start" && action !== "stop") return t.print("USAGE: SERVICE [START|STOP] [COMMAND]", ROY);
+      if (!name) return t.print(`USAGE: SERVICE ${action.toUpperCase()} [COMMAND]`, ROY);
+      if (action === "start") {
+        if (name === "tron") return t.print("ADDRESS FILE EMPTY", "TRON PROGRAM UNAVAILABLE");
+        return t.print(`SERVICE "${name}" NOT REGISTERED`);
       }
-      break;
-    case "stop":
-      if (cmd_args[1]) {
-        alanone.stop_service(cmd_args[1]);
-      } else {
-        alanone.terminal.print("USAGE: SERVICE STOP [COMMAND]");
-        alanone.terminal.print(
-          "My new control system isn't a mind reader. -Roy"
-        );
-      }
-      break;
-  }
-};
-alanone.start_service = function (service) {
-  switch (service) {
-    case "tron":
-      alanone.terminal.print("ADDRESS FILE EMPTY");
-      alanone.terminal.print("TRON PROGRAM UNAVAILABLE");
-      break;
-    default:
-      alanone.terminal.print('SERVICE "' + service + '" NOT REGISTERED');
-  }
-};
-alanone.stop_service = function (service) {
-  switch (service) {
-    case "mcp":
-      alanone.terminal.print("UNAUTHORIZED ACCESS");
-      alanone.terminal.print("COMMAND DERESOLVED");
-      alanone.terminal.print("INCIDENT LOGGED");
-  }
-};
+      if (name === "mcp") return t.print("UNAUTHORIZED ACCESS", "COMMAND DERESOLVED", "INCIDENT LOGGED");
+      if (name === "tron") return t.print('SERVICE "tron" NOT RUNNING');
+      t.print(`SERVICE "${name}" NOT REGISTERED`);
+    },
 
-// calculate date with elapsing time
-alanone.initial_epochtime = new Date().getTime();
-alanone.in_universe_epochtime = new Date(1982, 8, 22, 18, 32, 3).getTime();
-alanone.commands["date"] = function () {
-  var elapsed_epochtime = new Date().getTime() - alanone.initial_epochtime;
-  var universe_date = new Date(
-    alanone.in_universe_epochtime + elapsed_epochtime
-  );
-  alanone.terminal.print(alanone.timestamp(universe_date));
-};
+    date(t) {
+      t.print(timestamp(filmTime + (Date.now() - sitDown)));
+    },
+  };
 
-// convert a date object to an EST timestamp
-// can't just use toLocaleString here since I want all users to get the same experience
-// Wed Jul 07 1982 11:12:43 GMT-0400 (EDT)
-alanone.timestamp = function (date) {
-  var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  var timestamp = [];
-  timestamp.push(days[date.getUTCDay()]);
-  timestamp.push(months[date.getUTCMonth()]);
-  timestamp.push(alanone.leading_zero(date.getUTCDate()));
-  timestamp.push(date.getUTCFullYear());
-  var hours = alanone.leading_zero(date.getUTCHours() - 4);
-  var minutes = alanone.leading_zero(date.getUTCMinutes());
-  var seconds = alanone.leading_zero(date.getUTCSeconds());
-  timestamp.push(hours + ":" + minutes + ":" + seconds);
-  timestamp.push("GMT-0400 (EDT)");
-  return timestamp.join(" ");
-};
+  // ---------- The terminal ----------
 
-alanone.leading_zero = function (number) {
-  if (number <= 9) {
-    return ["0", number].join("");
-  } else {
-    return number;
-  }
-};
-
-$(document).ready(function () {
-  Terminal.promptActive = false;
-  $("#screen").bind("cli-load", function (e) {
-    Terminal.runCommand("service start tron");
+  const t = Terminal.create({
+    prompt: "\n$ ",
+    commands,
+    typingSpeed: 60,
+    cursor: "steady",
   });
-});
+  window.term = t;
+
+  t.boot((t) => t.run("service start tron"));
+})();
