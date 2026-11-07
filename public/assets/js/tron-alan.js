@@ -19,21 +19,23 @@
   };
 
   // ---------- The clock ----------
-  // Alan's clock reads 6:32:03 PM EDT, Wednesday 22 September 1982, when you
-  // sit down, and runs from there. Everyone gets the same time, wherever
-  // they are.
+  // Alan's screen reads "SEPT 22, 18:32:21PM" when you sit down, and the
+  // clock runs from there. ENCOM was filmed in California, so it's Pacific
+  // Daylight Time, Wednesday 22 September 1982. Everyone gets the same time,
+  // wherever they are. The film's format puts PM after a 24-hour time;
+  // keep that.
 
-  const EDT = -4 * 60 * 60 * 1000;
+  const PDT = -7 * 60 * 60 * 1000;
   const sitDown = Date.now();
-  const filmTime = Date.UTC(1982, 8, 22, 18, 32, 3) - EDT;
+  const filmTime = Date.UTC(1982, 8, 22, 18, 32, 21) - PDT;
 
   function timestamp(ms) {
-    const d = new Date(ms + EDT); // read with the UTC getters, this is EDT
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const d = new Date(ms + PDT); // read with the UTC getters, this is PDT
+    const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUNE", "JULY", "AUG", "SEPT", "OCT", "NOV", "DEC"];
     const two = (n) => String(n).padStart(2, "0");
-    const time = `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())}`;
-    return `${days[d.getUTCDay()]} ${months[d.getUTCMonth()]} ${two(d.getUTCDate())} ${d.getUTCFullYear()} ${time} GMT-0400 (EDT)`;
+    const h = d.getUTCHours();
+    const time = `${two(h)}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())}${h < 12 ? "AM" : "PM"}`;
+    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${time}`;
   }
 
   // ---------- Commands ----------
