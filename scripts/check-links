@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Check that every local link in public/ points at a file that exists.
+
+GitHub Pages serves this site from a subpath (/movieterminals/) unless it has
+a custom domain, so links must be relative. A root-absolute link like
+href="/assets/..." works locally and breaks there, so it counts as an error.
+
+Usage: scripts/check-links
+"""
+
+import re
+import sys
+from pathlib import Path
+from urllib.parse import urlsplit, unquote
+
+root = Path(__file__).resolve().parent.parent / "public"
+attr = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"']*)["']""", re.I)
+css_url = re.compile(r"""url\(\s*["']?([^"')]+)["']?\s*\)""", re.I)
+
+errors = []
+
+
+def check(page, target):
+    if not target or target.startswith(("#", "mailto:", "data:", "javascript:")):
+        return
+    parts = urlsplit(target)
+    if parts.scheme or parts.netloc:
+        return  # off-site
+    if parts.path.startswith("/"):
+        errors.append(f"{page.relative_to(root)}: root-absolute link {target!r}; make it relative")
+        return
+    if not parts.path:
+        return
+    dest = (page.parent / unquote(parts.path)).resolve()
+    if dest.is_dir() or parts.path.endswith("/"):
+        dest = dest / "index.html"
+    if not dest.is_file():
+        errors.append(f"{page.relative_to(root)}: broken link {target!r}")
+
+
+for page in sorted(root.rglob("*.html")):
+    for target in attr.findall(page.read_text()):
+        check(page, target)
+
+for sheet in sorted(root.rglob("*.css")):
+    for target in css_url.findall(sheet.read_text()):
+        check(sheet, target)
+
+for e in errors:
+    print(e, file=sys.stderr)
+sys.exit(1 if errors else 0)

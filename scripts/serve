@@ -1,0 +1,120 @@
+#!/bin/sh
+# Serve public/ locally, the way GitHub Pages will.
+# Usage: scripts/serve [port]   (default 8030, or $PORT)
+#        scripts/serve --list   show the local Python servers still running
+
+set -e
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+
+# ---------- Ports ----------
+
+# pids listening on a port, on any address
+port_holders() {
+  lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null | sort -u
+}
+
+# one line about a listener: port, pid, uptime, and what it serves
+describe() {
+  cmd=$(ps -o comm= -p "$2" 2>/dev/null | sed 's|.*/||')
+  up=$(ps -o etime= -p "$2" 2>/dev/null | tr -d ' ')
+  # http.server names its directory; the others serve from their cwd
+  dir=$(ps -o command= -p "$2" 2>/dev/null | sed -n 's/.*--directory \([^ ]*\).*/\1/p')
+  [ -n "$dir" ] || dir=$(lsof -a -p "$2" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+  printf '  http://localhost:%-6s pid %-6s up %-11s %s  %s\n' "$1" "$2" "$up" "$cmd" "$dir"
+}
+
+# every Python process of ours listening on TCP, as "port pid" lines
+python_servers() {
+  lsof -nP -iTCP -sTCP:LISTEN -a -u "$(id -u)" -Fpcn 2>/dev/null |
+    awk '/^p/ { pid = substr($0, 2) }
+         /^c/ { cmd = tolower(substr($0, 2)) }
+         /^n/ && cmd ~ /python/ { n = $0; sub(/.*:/, "", n); print n, pid }' |
+    sort -n -u
+}
+
+list_servers() {
+  servers=$(python_servers)
+  if [ -z "$servers" ]; then
+    echo "No local Python servers are running."
+    return
+  fi
+  echo "Local Python servers:"
+  echo "$servers" | while read -r p pid; do describe "$p" "$pid"; done
+  echo "Stop one with: kill <pid>"
+}
+
+next_free_port() {
+  p=$(($1 + 1))
+  while [ -n "$(port_holders "$p")" ]; do p=$((p + 1)); done
+  echo "$p"
+}
+
+# stop whatever holds $port, forcefully if it won't go quietly
+free_port() {
+  kill $1 2>/dev/null || true
+  i=0
+  while [ -n "$(port_holders "$port")" ] && [ $i -lt 30 ]; do sleep 0.1; i=$((i + 1)); done
+  if [ -n "$(port_holders "$port")" ]; then
+    kill -9 $1 2>/dev/null || true
+    sleep 0.3
+  fi
+  if [ -n "$(port_holders "$port")" ]; then
+    echo "Couldn't free port $port. Try: sudo kill $1" >&2
+    exit 1
+  fi
+  echo "Stopped it."
+}
+
+# ---------- Arguments ----------
+
+case "$1" in
+  -l|--list) list_servers; exit 0 ;;
+  -h|--help) sed -n '2,4s/^# \{0,1\}//p' "$0"; exit 0 ;;
+  -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
+esac
+
+port="${1:-${PORT:-8030}}"
+case "$port" in
+  ''|*[!0-9]*) echo "Not a port number: $port" >&2; exit 2 ;;
+esac
+
+# ---------- Serve ----------
+
+holders=$(port_holders "$port")
+if [ -n "$holders" ]; then
+  echo "Port $port is already in use:" >&2
+  for pid in $holders; do describe "$port" "$pid" >&2; done
+  alt=$(next_free_port "$port")
+  if [ -t 0 ] && [ -t 2 ]; then
+    printf 'Stop it and serve here instead? [y/N] ' >&2
+    read -r answer || answer=
+    case "$answer" in
+      [yY]*) free_port "$(echo $holders)" ;;
+      *) echo "Left it running. Port $alt is free: scripts/serve $alt" >&2; exit 1 ;;
+    esac
+  else
+    echo "Stop it with: kill $(echo $holders)" >&2
+    echo "Or use port $alt, which is free: scripts/serve $alt" >&2
+    exit 1
+  fi
+fi
+
+echo "Serving $root/public at http://localhost:$port/ (Ctrl-C to stop)"
+# http.server, plus no-store: without it a browser can keep showing a page
+# that another project served on this port earlier.
+# --directory stays on the command line so describe() can find it
+exec python3 -c '
+import functools, http.server, sys
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+_, _, directory, port = sys.argv
+http.server.test(
+    HandlerClass=functools.partial(Handler, directory=directory),
+    ServerClass=http.server.ThreadingHTTPServer,
+    port=int(port), bind="127.0.0.1")
+' --directory "$root/public" "$port"
