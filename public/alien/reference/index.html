@@ -1,146 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Alien Command Reference | Movie Terminals</title>
-  <link rel="stylesheet" href="/assets/css/site.css">
-  <script src="/assets/js/site.js"></script>
+  <meta name="description" content="Every command the Alien terminal understands, from Dallas's first query to Special Order 937.">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="../../assets/css/site.css">
 </head>
 
-<body>
-  <div class="topbar">
-    <div class="fill">
-      <div class="container">
-        <a href="." class="brand">Movie Terminals</a>
-        <ul class="nav">
-          <li class="active">
-            <a href="/">Home</a>
-          </li>
-        </ul>
-      </div>
+<body class="reference alien">
+  <header class="masthead">
+    <div class="wrap">
+      <a class="brand" href="../../">Movie Terminals</a>
+      <span class="crumb"><cite>Alien</cite></span>
     </div>
-  </div>
-  <div class="container">
-    <div class="content">
-      <div class="hero-unit" id="site_title">
-        <h1><em>Alien</em> Terminal Command Reference</h1>
-        <h2>&gt; What's the story mother?</h2>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">MU-TH-UR 6000 &middot; Command reference</p>
+      <h1><cite>Alien</cite> terminal commands</h1>
+      <p class="screen">&gt; WHAT'S THE STORY MOTHER?<span class="cursor" aria-hidden="true"></span></p>
+      <div class="actions">
+        <a class="button" href="../">Launch terminal</a>
       </div>
+    </section>
 
-      <section id="movie_script">
-        <div class="page-header">
-          <h1>Movie Script <small>commands as actually shown in the movie</small></h1>
-        </div>
-        <div class="row">
-          <div class="span5">
-            <h2>Following the script</h2>
-            <p>The commands following the script are connected where it makes sense.</p>
-            <p>For example, Dallas's query "WHAT ARE MY CHANCES?" only makes sense
-              within his "conversation" with the computer.</p>
-            <p>This command reference follows the order of the movie. You can run the
-              commands however you like, but if you want to act out the movie's
-              commands then you'll have to play along with each scene.</p>
-          </div>
-          <div class="span11">
-            <h3>Dallas Queries the Computer</h3>
-            <table class="zebra-striped">
-              <thead>
-                <tr>
-                  <th style="width: 200px;">Command</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>WHAT'S THE STORY MOTHER?</td>
-                  <td>In the movie we never actually see the result of this command.
-                    I'm assuming that Dallas was given a relevant summary of the
-                    mission, but not the whole story.</td>
-                </tr>
-              </tbody>
-            </table>
-            <h3>Dallas Queries the Computer</h3>
-            <table class="zebra-striped">
-              <thead>
-                <tr>
-                  <th style="width: 200px;">Command</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>REQUEST EVALUATION OF CURRENT PROCEDURES TO TERMINATE ALIEN</td>
-                  <td>The computer gives an unhelpful response.</td>
-                </tr>
-                <tr>
-                  <td>REQUEST OPTIONS FOR POSSIBLE PROCEDURE</td>
-                  <td>The computer gives an unhelpful response.</td>
-                </tr>
-                <tr>
-                  <td>WHAT ARE MY CHANCES?</td>
-                  <td>The computer gives an unhelpful response.<br>(These are more gripping in the movie.)</td>
-                </tr>
-              </tbody>
-            </table>
-            <h3>Ripley Queries the Computer</h3>
-            <table class="zebra-striped">
-              <thead>
-                <tr>
-                  <th style="width: 200px;">Command</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>REQUEST CLARIFICATION ON SCIENCE INABILITY TO NEUTRALIZE ALIEN</td>
-                  <td>The computer gives an unhelpful response, but an revealing conversation is started.</td>
-                </tr>
-                <tr>
-                  <td>REQUEST ENHANCEMENT</td>
-                  <td>The plot thickens.</td>
-                </tr>
-                <tr>
-                  <td>EMERGENCY COMMAND OVERRIDE 100375</td>
-                  <td>
-                    Sets a flag allowing you to query details on special orders.<br>
-                    The movie used "OVERIDE", so that works here too.
-                  </td>
-                </tr>
-                <tr>
-                  <td>WHAT IS SPECIAL ORDER 937?</td>
-                  <td>A key plot point is revealed, if you have access.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+    <section class="section" aria-labelledby="script">
+      <header>
+        <h2 id="script">From the script</h2>
+        <p class="sub">Commands as the movie shows them.</p>
+        <p>The commands are connected where that makes sense. Dallas asking "What are my chances?"
+          only makes sense inside his conversation with the computer.</p>
+        <p>They're listed in the movie's order. Run them however you like, but to act out the movie,
+          play along with each scene.</p>
+      </header>
 
-      <section id="movie_script">
-        <div class="page-header">
-          <h1>Fun Things to Try <small>commands that might have actually worked</small></h1>
+      <div>
+        <div class="scene">
+          <h3>Dallas queries the computer</h3>
+          <table class="commands">
+            <thead>
+              <tr><th scope="col">Command</th><th scope="col">What happens</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>What's the story mother?</kbd></td>
+                <td>The movie never shows the answer. This assumes Dallas got a relevant summary of the
+                  mission, but not the whole story.</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="row">
-          <div class="span5">
-            <h2>Play Time</h2>
-            <p>Here are some commands that I've added, or added additional parsing to.</p>
-            <p>If you have any suggestions for new commands, just email me at sdball@gmail.com</p>
-          </div>
-          <div class="span11">
-            <ul>
-              <li>SHIP STATUS</li>
-              <li>SHIP NAME</li>
-              <li>EMERGENCY COMMAND OVERRIDE (any number but 100375)</li>
-              <li>REQUEST ENHANCEMENT (out of script context)</li>
-              <li>WHAT ARE MY CHANCES? (out of script context)</li>
-              <li>HELP</li>
-            </ul>
-          </div>
-        </div>
-      </section>
 
-    </div> <!-- .content -->
-  </div> <!-- .container -->
+        <div class="scene">
+          <h3>Dallas asks how to kill it</h3>
+          <table class="commands">
+            <thead>
+              <tr><th scope="col">Command</th><th scope="col">What happens</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>Request evaluation of current procedures to terminate alien</kbd></td>
+                <td>An unhelpful response.</td>
+              </tr>
+              <tr>
+                <td><kbd>Request options for possible procedure</kbd></td>
+                <td>Another unhelpful response.</td>
+              </tr>
+              <tr>
+                <td><kbd>What are my chances?</kbd></td>
+                <td>The most unhelpful response yet. (It's more gripping in the movie.)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="scene">
+          <h3>Ripley queries the computer</h3>
+          <table class="commands">
+            <thead>
+              <tr><th scope="col">Command</th><th scope="col">What happens</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>Request clarification on science inability to neutralize alien</kbd></td>
+                <td>An unhelpful response, but it starts a revealing conversation.</td>
+              </tr>
+              <tr>
+                <td><kbd>Request enhancement</kbd></td>
+                <td>The plot thickens.</td>
+              </tr>
+              <tr>
+                <td><kbd>Emergency command override 100375</kbd></td>
+                <td>Grants access to the details of special orders. The movie spells it "overide",
+                  so that works too.</td>
+              </tr>
+              <tr>
+                <td><kbd>What is special order 937?</kbd></td>
+                <td>A key plot point, if you have access.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="try">
+      <header>
+        <h2 id="try">Fun things to try</h2>
+        <p class="sub">Commands that might have worked.</p>
+        <p>These are commands added for the site, or ones with extra parsing. Have an idea for
+          another? Email <a href="mailto:sdball@gmail.com">sdball@gmail.com</a>.</p>
+      </header>
+
+      <ul class="try-list">
+        <li><kbd>Ship status</kbd></li>
+        <li><kbd>Ship name</kbd></li>
+        <li><kbd>Emergency command override</kbd> <span class="note">with any number but 100375</span></li>
+        <li><kbd>Request enhancement</kbd> <span class="note">outside the script</span></li>
+        <li><kbd>What are my chances?</kbd> <span class="note">outside the script</span></li>
+        <li><kbd>Help</kbd></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <div class="wrap">
+      <p><cite>Alien</cite> &copy; 20th Century Fox, 1979. <a href="https://github.com/sdball/movieterminals">Source on GitHub</a>.</p>
+    </div>
+  </footer>
 </body>
 
 </html>

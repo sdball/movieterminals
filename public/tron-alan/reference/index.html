@@ -1,94 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Tron (Alan's Terminal) Command Reference | Movie Terminals</title>
-  <link rel="stylesheet" href="/assets/css/site.css">
-  <script src="/assets/js/site.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TRON Command Reference | Movie Terminals</title>
+  <meta name="description" content="Every command Alan's ENCOM terminal from TRON understands.">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="../../assets/css/site.css">
 </head>
 
-<body>
-  <div class="topbar">
-    <div class="fill">
-      <div class="container">
-        <a href="." class="brand">Movie Terminals</a>
-        <ul class="nav">
-          <li class="active">
-            <a href="/">Home</a>
-          </li>
-        </ul>
-      </div>
+<body class="reference tron">
+  <header class="masthead">
+    <div class="wrap">
+      <a class="brand" href="../../">Movie Terminals</a>
+      <span class="crumb"><cite>TRON</cite></span>
     </div>
-  </div>
-  <div class="container">
-    <div class="content">
-      <div class="hero-unit" id="site_title">
-        <h1><em>Tron</em> (Alan's Terminal) Command Reference</h1>
-        <h2>&gt; service start tron</h2>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">Alan's ENCOM terminal &middot; Command reference</p>
+      <h1><cite>TRON</cite> terminal commands</h1>
+      <p class="screen">$ service start tron<span class="cursor" aria-hidden="true"></span></p>
+      <div class="actions">
+        <a class="button" href="../">Launch terminal</a>
       </div>
+    </section>
 
-      <section id="movie_script">
-        <div class="page-header">
-          <h1>Commands <small>none of these were actually in the movie :-)</small></h1>
-        </div>
-        <div class="row">
-          <div class="span12 offset4">
-            <table class="zebra-striped">
-              <thead>
-                <tr>
-                  <th style="width: 200px;">Command</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <strong>service start [service]</strong><br>
-                    <strong>service stop [service]</strong>
-                  </td>
-                  <td>
-                    <p>Try to start or stop the given service.</p>
-                    Known services:
-                    <ul>
-                      <li>tron</li>
-                      <li>mcp</li>
-                    </ul>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>date</strong></td>
-                  <td>
-                    <p>Output the date and time as shown on Alan's terminal at the start of <em>Tron</em></p>
-                    <p>The terminal has a running clock, so you can run it multiple times and get a different timestamp.
-                    </p>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>ls</strong></td>
-                  <td>
-                    <p>List the files and directories in the current directory/.</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>cat [filename]</strong></td>
-                  <td>
-                    <p>Output the contents of the given file.</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>pwd</strong></td>
-                  <td>
-                    <p>Print out the current directory path.</p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+    <section class="section" aria-labelledby="commands">
+      <header>
+        <h2 id="commands">Commands</h2>
+        <p class="sub">None of these are actually in the movie.</p>
+        <p>The terminal is on screen only briefly, so these fill it out as a Unix of the "future".</p>
+      </header>
 
-    </div> <!-- .content -->
-  </div> <!-- .container -->
+      <table class="commands">
+        <thead>
+          <tr><th scope="col">Command</th><th scope="col">What happens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><kbd>service start [service]</kbd><br><kbd>service stop [service]</kbd></td>
+            <td>
+              <p>Tries to start or stop a service. Known services:</p>
+              <ul>
+                <li><code>tron</code></li>
+                <li><code>mcp</code></li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>date</kbd></td>
+            <td>
+              <p>The date and time on Alan's terminal at the start of <cite>TRON</cite>.</p>
+              <p>The clock keeps running, so each run gives a different time.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>ls</kbd></td>
+            <td>Lists the files and directories in the current directory.</td>
+          </tr>
+          <tr>
+            <td><kbd>cat [filename]</kbd></td>
+            <td>Prints the contents of a file.</td>
+          </tr>
+          <tr>
+            <td><kbd>pwd</kbd></td>
+            <td>Prints the current directory's path.</td>
+          </tr>
+          <tr>
+            <td><kbd>help</kbd></td>
+            <td>Lists every command.</td>
+          </tr>
+          <tr>
+            <td><kbd>clear</kbd></td>
+            <td>Clears the screen.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <div class="wrap">
+      <p><cite>TRON</cite> &copy; Walt Disney Productions, 1982. <a href="https://github.com/sdball/movieterminals">Source on GitHub</a>.</p>
+    </div>
+  </footer>
 </body>
 
 </html>

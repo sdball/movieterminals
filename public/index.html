@@ -1,64 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Home | Movie Terminals</title>
-  <link rel="stylesheet" href="/assets/css/site.css">
-  <script src="/assets/js/site.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Movie Terminals</title>
+  <meta name="description" content="Play with recreations of the computer terminals from famous movies: MU-TH-UR from Alien and Alan's ENCOM terminal from TRON.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="assets/css/site.css">
 </head>
 
 <body>
-  <div class="topbar">
-    <div class="fill">
-      <div class="container">
-        <a href="." class="brand">Movie Terminals</a>
-        <ul class="nav">
-          <li class="active">
-            <a href="/">Home</a>
-          </li>
-        </ul>
-      </div>
+  <header class="masthead">
+    <div class="wrap">
+      <a class="brand" href="./">Movie Terminals</a>
     </div>
-  </div>
-  <div class="container">
-    <div class="content">
-      <div class="hero-unit" id="site_title">
-        <h1>Movie Terminals</h1>
-        <h2>&gt; Play with recreations of famous movie terminals.</h2>
-      </div>
+  </header>
 
-      <div class="row">
-        <div class="span6">
-          <h2>Alien (1979)</h2>
-          <p>One of the first examples of a terminal text interface relaying key
-            plot points.</p>
-          <p>Its "Interface 2037" seems to be something of a natural English parser
-            or its commands are unusually verbose. Unless you are an extreme
-            <em>Alien</em> fan or have watched it very recently, you'll want to take a
-            look at the command reference.
-          </p>
-          <p><a href="/alien/reference/">Command Reference</a></p>
-          <p><a href="/alien/" class="btn">Launch Terminal</a></p>
-        </div>
-        <div class="span5">
-          <h2>Tron (1982)</h2>
-          <h3>Alan's Terminal</h3>
-          <p>At the start of the movie <em>Tron</em>, Alan is attempting to work on his "Tron"
-            program. Tron is a security program that monitors all contact between
-            internal and external systems on the Encom network. Unfortunately for him,
-            the MCP doesn't want any oversight and his access is suspended.</p>
-          <p>The actual movie screen time of this terminal is very sparse, so I'm
-            going to be padding this quite a bit with fun things to do. For that I made
-            the assumption that the Encom developer terminals were using a variant of
-            Unix. Even more, a variant of Unix with some system tools of the "future"
-            (e.g. service).</p>
-          <p><a href="/tron-alan/reference/">Command Reference</a></p>
-          <p><a href="/tron-alan/" class="btn">Launch Terminal</a></p>
-        </div>
-      </div>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Movie Terminals<span class="cursor" aria-hidden="true"></span></h1>
+      <p class="lede">Play with recreations of the computer terminals from famous movies. Type the
+        commands the characters typed, and a few they could have.</p>
+    </section>
 
-    </div> <!-- .content -->
-  </div> <!-- .container -->
+    <ul class="films">
+      <li class="film alien">
+        <a class="screen" href="alien/" aria-label="Launch the Alien terminal"><span class="dim">INTERFACE 2037 READY FOR INQUIRY</span>
+
+WHAT'S THE STORY MOTHER?<span class="cursor" aria-hidden="true"></span></a>
+        <div class="film-body">
+          <h2><cite>Alien</cite> <span class="year">1979</span></h2>
+          <p class="machine">MU-TH-UR 6000 &middot; USCSS Nostromo</p>
+          <p>One of the first terminal interfaces on screen to carry key plot points.</p>
+          <p>Its Interface 2037 seems to parse natural English, or else its commands are unusually
+            verbose. Unless you're an extreme <cite>Alien</cite> fan or have watched it very recently,
+            you'll want to look at the command reference.</p>
+          <div class="actions">
+            <a class="button" href="alien/">Launch terminal</a>
+            <a class="quiet-link" href="alien/reference/">Command reference</a>
+          </div>
+        </div>
+      </li>
+
+      <li class="film tron">
+        <a class="screen" href="tron-alan/" aria-label="Launch Alan's terminal from TRON">$ service start tron
+<span class="dim">ADDRESS FILE EMPTY
+TRON PROGRAM UNAVAILABLE</span>
+
+$ <span class="cursor" aria-hidden="true"></span></a>
+        <div class="film-body">
+          <h2><cite>TRON</cite> <span class="year">1982</span></h2>
+          <p class="machine">Alan's terminal &middot; ENCOM</p>
+          <p>At the start of <cite>TRON</cite>, Alan is trying to work on his Tron program, a security
+            program that monitors all contact between internal and external systems on the ENCOM
+            network. Unfortunately for him, the MCP doesn't want any oversight, and his access is
+            suspended.</p>
+          <p>The terminal gets very little screen time, so this one is padded with fun things to do.
+            It assumes ENCOM's developer terminals ran a variant of Unix, one with some system tools
+            of the "future" (like <code>service</code>).</p>
+          <div class="actions">
+            <a class="button" href="tron-alan/">Launch terminal</a>
+            <a class="quiet-link" href="tron-alan/reference/">Command reference</a>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </main>
+
+  <footer class="colophon">
+    <div class="wrap">
+      <p>The terminals run on the xkcd CLI by <a href="https://chromakode.com">Chromakode</a>, which
+        grew out of CLI2 by Rod McFarland. <cite>Alien</cite> &copy; 20th Century Fox.
+        <cite>TRON</cite> &copy; Walt Disney Productions.</p>
+      <p><a href="https://github.com/sdball/movieterminals">Source on GitHub</a></p>
+    </div>
+  </footer>
 </body>
 
 </html>

@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Alan's Terminal in TRON | Movie Terminals</title>
-  <link rel="stylesheet" href="/assets/css/tron-alan.css?v=1">
-  <script src="/assets/js/tron-alan.js?v=1"></script>
+  <meta name="description" content="Sit at Alan Bradley's ENCOM terminal from TRON (1982) and try to start the Tron program before the MCP notices.">
+  <meta name="theme-color" content="#000205">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap">
+  <link rel="stylesheet" href="../assets/css/terminal.css">
+  <link rel="stylesheet" href="../assets/css/tron-alan.css">
+  <script src="../assets/js/vendor/jquery-1.4.2.js"></script>
+  <script src="../assets/js/vendor/jquery.hotkeys.js"></script>
+  <script src="../assets/js/terminal.js"></script>
+  <script src="../assets/js/tron-alan.js"></script>
 </head>
 
 <body>
@@ -19,10 +31,16 @@
           id="cursor">&nbsp;</span><span id="rcommand"></span></span><span id="spinner"></span>
     </div>
   </div>
-  <img src="/assets/images/tron/encom_small.png" id="encom" alt="ENCOM" width="149" height="50" />
-  <div id="credit">Tron &copy; 20th Walt Disney Pictures, 1982. XKCD CLI by <a
-      href="http://chromakode.com">Chromakode</a>. Original CLI2 by <a href="http://thrind.xamai.ca">Rod
-      McFarland</a>. <a href="https://github.com/sdball/movieterminals">Source code</a>.</div>
+  <img src="../assets/images/tron/encom_small.png" id="encom" alt="ENCOM" width="149" height="50">
+  <footer id="credit">
+    <nav>
+      <a href="../">Movie Terminals</a>
+      <a href="reference/">Command reference</a>
+    </nav>
+    <p><cite>TRON</cite> &copy; Walt Disney Productions, 1982. Terminal from the xkcd CLI by
+      <a href="https://chromakode.com">Chromakode</a>, after CLI2 by Rod McFarland.
+      <a href="https://github.com/sdball/movieterminals">Source</a>.</p>
+  </footer>
 </body>
 
 </html>

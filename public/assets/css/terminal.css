@@ -1,0 +1,202 @@
+/*
+  Shared by every terminal page. A terminal's own stylesheet sets the tokens
+  below, and the engine in terminal.js fills #display and #bottomline.
+
+  Based on the CLI 2.0 stylesheet by R. McFarland, as reworked by Chromakode
+  for the xkcd CLI.
+*/
+
+:root {
+  color-scheme: dark;
+  --screen: #000;            /* the glass */
+  --phosphor: #e8e8e8;       /* text */
+  --phosphor-bright: #fff;   /* prompt and cursor */
+  --glow: transparent;       /* tight halo around each glyph */
+  --bloom: transparent;      /* wide, faint halo */
+  --alert: #ff5b4a;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --size: 20px;
+  --leading: 1.3;
+  --width: none;             /* the screen's widest column */
+  --top: 2rem;               /* space above the first line */
+  --scanlines: 0.22;         /* how dark the gaps between scanlines are */
+  --vignette: 0.6;           /* how dark the corners are */
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  background: var(--screen);
+  color: var(--phosphor);
+  font: var(--size) / var(--leading) var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------- The screen ---------- */
+
+#screen {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--width);
+  margin: 0 auto;
+  padding: var(--top) 16px 1em;
+  overflow: hidden; /* the engine scrolls it */
+  text-shadow: 0 0 0.12em var(--glow), 0 0 0.7em var(--bloom);
+  transform-origin: 50% 50%;
+}
+
+#screen p,
+#screen div,
+#screen td,
+#screen th,
+#screen pre,
+#screen ul,
+#screen h3 {
+  font: inherit;
+  color: inherit;
+}
+
+/* print("") appends an empty div, so a div's margin is a blank line */
+#screen div,
+#screen table {
+  margin: 0 0 1em;
+}
+
+#screen p,
+#screen ul,
+#display {
+  margin: 0;
+}
+
+#screen p,
+#screen span,
+#screen a {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#screen p.error { color: var(--alert); }
+
+#screen ul { padding: 0; }
+#screen li { list-style: none; }
+
+#screen h3 {
+  margin: 0.25em 0;
+  text-decoration: underline;
+}
+
+#screen ins { text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
+
+#screen a,
+#screen .linky {
+  color: var(--phosphor-bright);
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+#screen a:hover {
+  background: var(--phosphor-bright);
+  color: var(--screen);
+}
+
+#screen table { border-collapse: collapse; }
+#screen td { padding: 0 1em; }
+
+#prompt { color: var(--phosphor-bright); }
+
+/* The engine sets the cursor's colors inline as it blinks */
+#cursor {
+  font-weight: normal;
+  background: var(--phosphor-bright);
+  color: var(--screen);
+}
+
+/* Typing on a phone goes through this, so keep it out of sight but typeable */
+#lcommand { outline: none; caret-color: transparent; }
+
+#spinner {
+  display: none;
+  margin-left: 1em;
+  font-weight: bold;
+  line-height: 0;
+}
+
+/* ---------- The glass ---------- */
+
+/* Scanlines and a vignette over everything, never in the way of a click */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(0 0 0 / var(--vignette)) 100%),
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / var(--scanlines)) 0 1px, transparent 1px 3px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The tube warming up: a bright line that opens into the picture */
+  #screen {
+    animation: power-on 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes power-on {
+    0%   { transform: scale(1, 0.004); filter: brightness(3); opacity: 0.6; }
+    45%  { transform: scale(1, 0.004); filter: brightness(3); opacity: 1; }
+    100% { transform: none; filter: none; }
+  }
+}
+
+/* ---------- Credits ---------- */
+
+#credit {
+  position: relative;
+  z-index: 11;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: space-between;
+  padding: 0.5rem 16px calc(0.5rem + env(safe-area-inset-bottom));
+  font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--phosphor);
+  opacity: 0.5;
+  text-shadow: none;
+  transition: opacity 150ms;
+}
+
+#credit:hover,
+#credit:focus-within { opacity: 0.95; }
+
+#credit p { margin: 0; }
+
+#credit nav { display: flex; gap: 1rem; }
+
+#credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+#credit a:hover { text-decoration-color: currentColor; }
+
+#credit a:focus-visible {
+  outline: 2px solid var(--phosphor-bright);
+  outline-offset: 2px;
+}
+
+noscript p { margin: 0; }

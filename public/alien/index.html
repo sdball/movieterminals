@@ -1,18 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Alien | Movie Terminals</title>
-  <link rel="stylesheet" href="/assets/css/alien.css?v=1">
-  <script src="/assets/js/alien.js?v=1"></script>
+  <meta name="description" content="Query MU-TH-UR, the Nostromo's computer from Alien (1979), and find out what Special Order 937 says.">
+  <meta name="theme-color" content="#010703">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="../assets/css/terminal.css">
+  <link rel="stylesheet" href="../assets/css/alien.css">
+  <script src="../assets/js/vendor/jquery-1.4.2.js"></script>
+  <script src="../assets/js/vendor/jquery.hotkeys.js"></script>
+  <script src="../assets/js/terminal.js"></script>
+  <script src="../assets/js/alien.js"></script>
 </head>
 
 <body>
   <div id="screen">
     <div id="display">
       <noscript>
-        <p>Sorry, the CLI requires JavaScript to work. Please turn on JavaScript, or try the <a href="/1/">GUI
-            Interface</a>.</p>
+        <p>INTERFACE 2037 OFFLINE</p>
+        <p>JAVASCRIPT REQUIRED FOR INQUIRY</p>
       </noscript>
     </div>
     <div id="bottomline">
@@ -20,9 +32,15 @@
           id="cursor">&nbsp;</span><span id="rcommand"></span></span><span id="spinner"></span>
     </div>
   </div>
-  <div id="credit">Alien &copy; 20th Century Fox, 1979. XKCD CLI by <a href="http://chromakode.com">Chromakode</a>.
-    Original CLI2 by <a href="http://thrind.xamai.ca">Rod McFarland</a>. <a
-      href="https://github.com/sdball/movieterminals">Source code</a>.</div>
+  <footer id="credit">
+    <nav>
+      <a href="../">Movie Terminals</a>
+      <a href="reference/">Command reference</a>
+    </nav>
+    <p><cite>Alien</cite> &copy; 20th Century Fox, 1979. Terminal from the xkcd CLI by
+      <a href="https://chromakode.com">Chromakode</a>, after CLI2 by Rod McFarland.
+      <a href="https://github.com/sdball/movieterminals">Source</a>.</p>
+  </footer>
 </body>
 
 </html>
