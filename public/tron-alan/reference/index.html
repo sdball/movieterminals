@@ -93,9 +93,9 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>who</kbd><br><kbd>finger [user]</kbd></td>
+            <td><kbd>who</kbd><br><kbd>query [user]</kbd></td>
             <td>
-              <p>Who's logged in, and what they've put in their plan.</p>
+              <p>Who's logged in. <code>query</code>, one of ENCOM's own commands, looks someone up, plan and all.</p>
             </td>
           </tr>
           <tr>
@@ -105,9 +105,9 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>whoami</kbd><br><kbd>ps</kbd><br><kbd>kill [-9] [pid]</kbd></td>
+            <td><kbd>whoami</kbd><br><kbd>ps</kbd><br><kbd>ps aux</kbd><br><kbd>kill [-9] [pid]</kbd></td>
             <td>
-              <p>Who you are, what's running, and stopping it. The MCP is always running.</p>
+              <p>Who you are, what's running (<code>ps aux</code> or <code>ps -ef</code> for everyone's), and stopping it. The MCP is always running.</p>
             </td>
           </tr>
           <tr>
@@ -119,7 +119,7 @@
           <tr>
             <td><kbd>help</kbd></td>
             <td>
-              <p>Lists every command.</p>
+              <p>Lists every command: ENCOM's own, the system's, and the shell's. <code>help [command]</code> describes one.</p>
             </td>
           </tr>
           <tr>
@@ -143,7 +143,7 @@
         <ol>
           <li>Read your mail: <kbd>mail</kbd>, then <kbd>3</kbd>. Lora's been running a copy of TRON in the laser lab.</li>
           <li><kbd>ls /lab/laser</kbd> is denied, and <kbd>ls -l /lab</kbd> shows why: you can't list the lab directory, but you can read a file in it if you know the name.</li>
-          <li><kbd>finger lora</kbd> or <kbd>talk lora</kbd> names today's log: <kbd>cat /lab/laser/log.0922</kbd>. (Today is <kbd>date</kbd>: SEPT 22.)</li>
+          <li><kbd>query lora</kbd>, <kbd>talk lora</kbd>, or <kbd>ps aux</kbd> names today's log: <kbd>cat /lab/laser/log.0922</kbd>. (Today is <kbd>date</kbd>: SEPT 22.)</li>
           <li>The log says she saved it as addr.bak: <kbd>cp /lab/laser/addr.bak tron.addr</kbd></li>
           <li><kbd>service start tron</kbd></li>
         </ol>

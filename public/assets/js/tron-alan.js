@@ -8,7 +8,8 @@
   directory, but he can read a file there if he knows its name.
 
     mail                      Lora has a copy of TRON in the laser lab
-    finger lora               today's log is log.0922 (or talk lora)
+    query lora                today's log is log.0922 (or talk lora,
+                              or ps aux: she's editing it)
     cat /lab/laser/log.0922   she copied it to addr.bak
     cp /lab/laser/addr.bak tron.addr
     service start tron        Tron runs, and the MCP ends the session
@@ -61,13 +62,62 @@
     return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2)} ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}`;
   }
 
+  // ---------- What's installed ----------
+  // help lists these, and /bin and /usr/encom/bin hold them. ENCOM's own
+  // commands are customizations; everything else is standard issue.
+
+  const dir = (owner, group, mode, mtime, children, extra) => ({ type: "dir", owner, group, mode, mtime, children, ...extra });
+  const file = (owner, group, mode, mtime, lines, extra) => ({ type: "file", owner, group, mode, mtime, lines, ...extra });
+
+  const GROUPS = [
+    {
+      title: "ENCOM COMMANDS", where: "/usr/encom/bin", key: "ENCOM",
+      commands: [
+        ["query", "look up a user: query [user]"],
+        ["request", "ask the Master Control Program for something"],
+        ["service", "start or stop a service: service start tron"],
+      ],
+    },
+    {
+      title: "SYSTEM COMMANDS", where: "/bin", key: "SYSTEM",
+      commands: [
+        ["cat", "print a file: cat [file]"],
+        ["cp", "copy a file: cp [from] [to]"],
+        ["date", "the date and time"],
+        ["kill", "stop a process: kill [-9] [pid]"],
+        ["ls", "list a directory: ls [-a] [-l] [path]"],
+        ["mail", "read your mail"],
+        ["mv", "move a file: mv [from] [to]"],
+        ["ps", "list processes: ps, or ps aux for everyone's"],
+        ["rm", "remove a file: rm [file]"],
+        ["talk", "talk to someone who's logged in: talk [user]"],
+        ["who", "who's logged in"],
+        ["whoami", "who you are"],
+      ],
+    },
+    {
+      title: "SHELL BUILT-INS",
+      commands: [
+        ["cd", "change directory: cd [path]"],
+        ["clear", "clear the screen"],
+        ["help", "this list, or help [command]"],
+        ["pwd", "print the current directory"],
+      ],
+    },
+  ];
+
+  // a directory's worth of programs, from a group above
+  function programs(key, group, mtime, extra = []) {
+    const names = [...GROUPS.find((g) => g.key === key).commands.map(([name]) => name), ...extra].sort();
+    return Object.fromEntries(names.map((name) => [name, file("root", group, "rwxr-xr-x", mtime,
+      [`\u00a7\u00d0\u00ff\u00ff ${name}\u00b6\u00b6 usage: ${name}\u00a0\u00e4\u00e4`], { binary: true })]));
+  }
+
   // ---------- Files ----------
   // Owners and modes work like Unix, so the lab directory (--x for others)
   // and the failing mv fall out of the rules. A guarded file or directory
   // is the MCP's: touching it raises suspicion.
 
-  const dir = (owner, group, mode, mtime, children, extra) => ({ type: "dir", owner, group, mode, mtime, children, ...extra });
-  const file = (owner, group, mode, mtime, lines, extra) => ({ type: "file", owner, group, mode, mtime, lines, ...extra });
   const binary = (owner, group, mtime, junk) => file(owner, group, "rwxr-xr-x", mtime, [junk], { binary: true });
 
   const ADDRESSES = [
@@ -80,13 +130,7 @@
   ];
 
   const root = dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", {
-    bin: dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", {
-      cat: binary("root", "root", "Jan 12 09:00", "§Ðÿÿ ELF?¶¶ cat: %s ää"),
-      cp: binary("root", "root", "Jan 12 09:00", "§Ðÿÿ cp: %s þä usage"),
-      ls: binary("root", "root", "Jan 12 09:00", "§Ðÿÿ ls -l¶ total %d ä"),
-      mail: binary("root", "root", "Jan 12 09:00", "§Ðÿÿ /usr/spool/mail/%s ä"),
-      sh: binary("root", "root", "Jan 12 09:00", "§Ðÿÿ $ ¶¶PATH= ää"),
-    }),
+    bin: dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", programs("SYSTEM", "root", "Jan 12 09:00", ["sh"])),
     etc: dir("root", "root", "rwxr-xr-x", "Sep 20 16:12", {
       motd: file("root", "root", "rw-r--r--", "Sep 20 16:12", [
         "ENCOM TIME-SHARING SYSTEM",
@@ -151,6 +195,9 @@
     }),
     mcp: dir("mcp", "mcp", "rwx------", "Sep 22 18:32", {}, { guarded: true }),
     usr: dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", {
+      encom: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", {
+        bin: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", programs("ENCOM", "encom", "Aug 02 15:30")),
+      }),
       games: dir("root", "root", "rwxr-xr-x", "Jun 04 11:15", {
         space_paranoids: binary("dillinger", "encom", "Jun 04 11:15",
           "§Ðÿ SPACE PARANOIDS (C) 1982 E. DILLINGER ¶¶ K.FLYNNää rev 3"),
@@ -326,9 +373,17 @@
   // ---------- Commands ----------
 
   const commands = {
-    // the built-in help would list the mail prompt's command too
-    help(t) {
-      t.print(t.el("h3", "help"), t.el("ul", null, Object.keys(commands).filter((name) => name !== "&").map((name) => t.el("li", name))));
+    // every command, by where it comes from; "help ls" for one
+    help(t, [name]) {
+      if (name) {
+        const entry = GROUPS.flatMap((g) => g.commands).find(([n]) => n === name);
+        return t.print(entry ? `${name}: ${entry[1]}` : `help: no help for ${name}`);
+      }
+      GROUPS.forEach((group, i) => {
+        if (i) t.print("");
+        t.print(group.where ? `${group.title}  (${group.where})` : group.title);
+        t.print(...hang(11, group.commands.map(([n, what]) => `  ${n.padEnd(9)}${what}`)));
+      });
     },
 
     "&": (t, args) => mailCommand(t, args.join(" ")),
@@ -467,7 +522,7 @@
       );
     },
 
-    finger(t, [name]) {
+    query(t, [name]) {
       if (!name) return commands.who(t);
       const people = {
         alan1: ["Alan Bradley", "On since Wed Sep 22 08:31 on tty7", HOME],
@@ -476,7 +531,7 @@
         gibbs: ["Walter Gibbs", "Last login Fri Sep 17 12:20 on tty2", "/home/gibbs"],
         mcp: ["Master Control Program", "On since Tue Jan 12 09:00", "/mcp"],
       };
-      if (!Object.hasOwn(people, name)) return t.print(`finger: ${name}: no such user.`);
+      if (!Object.hasOwn(people, name)) return t.print(`query: ${name}: no such user.`);
       const [full, since, home] = people[name];
       t.print(`Login: ${name.padEnd(16)} Name: ${full}`, `Directory: ${home}`, since);
       const plan = find(`${home}/.plan`);
@@ -515,7 +570,21 @@
       t.print(`talk: ${name}: no such user`);
     },
 
-    ps(t) {
+    // plain ps is Alan's (and the MCP, which is everywhere); ps aux,
+    // ps -ef, and the like are everyone's
+    ps(t, args, line) {
+      const flags = args.join("").replace(/-/g, "");
+      if (/[aex]/.test(flags)) {
+        return t.print(
+          "USER       PID TTY      TIME COMMAND",
+          "mcp          1 ?     9999:59 mcp",
+          "dillinger   96 console  0:04 sh",
+          "lora       118 tty3     0:12 vi /lab/laser/log.0922",
+          "flynn      187 ttyd0    0:01 sh",
+          "alan1      211 tty7     0:00 sh",
+          `alan1      240 tty7     0:00 ${line}`,
+        );
+      }
       t.print(
         "  PID TTY      TIME CMD",
         "    1 ?     9999:59 mcp",
@@ -533,6 +602,14 @@
         return suspect(t, hard ? 2 : 1);
       }
       if (pid === "211") return logout(t);
+      if (pid === "96" || pid === "118" || pid === "187") {
+        t.print(`kill: ${pid}: Operation not permitted`);
+        if (pid !== "118") return;
+        return (async () => {
+          await sleep(1200);
+          await t.type(hang(6, ["lora: alan, did you just try to kill my editor?"]), { cps: 45 });
+        })();
+      }
       t.print(`kill: ${pid}: No such process`);
     },
 
@@ -683,6 +760,12 @@
     cursor: "steady",
   });
   window.term = t;
+
+  // help and the commands should list the same things
+  const listed = new Set(GROUPS.flatMap((g) => g.commands.map(([name]) => name)));
+  const defined = new Set([...Object.keys(commands).filter((name) => name !== "&"), "clear"]);
+  for (const name of listed) if (!defined.has(name)) console.warn(`help lists ${name}, which isn't a command`);
+  for (const name of defined) if (!listed.has(name)) console.warn(`${name} isn't in help`);
 
   t.boot(async (t) => {
     await t.run("service start tron");
