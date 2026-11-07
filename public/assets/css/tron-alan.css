@@ -33,3 +33,33 @@
 @media (max-width: 719px) {
   #encom { bottom: 6.5rem; }
 }
+
+/* The ending: the session fades and Tron's line stays lit */
+#ending {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: var(--phosphor-bright);
+}
+
+#ending p { margin: 0; }
+#ending .again { margin-top: 1.5em; font-size: 0.6em; color: var(--phosphor); opacity: 0.7; }
+
+@media (prefers-reduced-motion: no-preference) {
+  #ending { animation: ending-in 1.4s ease-out 2.2s both; }
+  #ending .again { animation: ending-in 1s ease-out 4s both; }
+
+  @keyframes ending-in {
+    from { opacity: 0; }
+  }
+}
+
+/* A line that wraps under its text, not its prefix (log timestamps, talk) */
+#display p.hang {
+  padding-left: var(--hang);
+  text-indent: calc(-1 * var(--hang));
+}

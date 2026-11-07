@@ -34,8 +34,8 @@
     <section class="section" aria-labelledby="commands">
       <header>
         <h2 id="commands">Commands</h2>
-        <p class="sub">None of these are actually in the movie.</p>
-        <p>The terminal is on screen only briefly, so these fill it out as a Unix of the "future".</p>
+        <p class="sub">Tron won't start: the address file is empty. Find it.</p>
+        <p>The terminal is on screen only briefly, so most of this fills it out as a Unix of the "future". Poking at what the MCP guards makes it suspicious, and it may log you out. You keep what you've done.</p>
       </header>
 
       <table class="commands">
@@ -46,11 +46,13 @@
           <tr>
             <td><kbd>service start [service]</kbd><br><kbd>service stop [service]</kbd></td>
             <td>
-              <p>Tries to start or stop a service. Known services:</p>
-              <ul>
-                <li><code>tron</code></li>
-                <li><code>mcp</code></li>
-              </ul>
+              <p>Starts or stops a service: <code>tron</code> or <code>mcp</code>. Tron won't start while its address file is empty.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>mail</kbd><br><kbd>mail [number]</kbd></td>
+            <td>
+              <p>Reads Alan's mail. At the <code>&amp;</code> prompt, type a message number to read it, <code>h</code> to list messages, <code>?</code> for help, or <code>q</code> to quit.</p>
             </td>
           </tr>
           <tr>
@@ -61,27 +63,92 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>ls</kbd></td>
-            <td>Lists the files and directories in the current directory.</td>
+            <td><kbd>ls [-a] [-l] [path]</kbd></td>
+            <td>
+              <p>Lists a directory. <code>-a</code> shows hidden files and <code>-l</code> shows owners and permissions.</p>
+            </td>
           </tr>
           <tr>
-            <td><kbd>cat [filename]</kbd></td>
-            <td>Prints the contents of a file.</td>
+            <td><kbd>cd [path]</kbd></td>
+            <td>
+              <p>Changes directory. <code>~</code> is Alan's home.</p>
+            </td>
           </tr>
           <tr>
             <td><kbd>pwd</kbd></td>
-            <td>Prints the current directory's path.</td>
+            <td>
+              <p>Prints the current directory's path.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>cat [file]</kbd></td>
+            <td>
+              <p>Prints a file.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>cp [from] [to]</kbd><br><kbd>mv [from] [to]</kbd><br><kbd>rm [file]</kbd></td>
+            <td>
+              <p>Copies, moves, or removes files, where Alan's permissions allow.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>who</kbd><br><kbd>finger [user]</kbd></td>
+            <td>
+              <p>Who's logged in, and what they've put in their plan.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>talk [user]</kbd></td>
+            <td>
+              <p>Talks to someone who's logged in, if they'll answer.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>whoami</kbd><br><kbd>ps</kbd><br><kbd>kill [-9] [pid]</kbd></td>
+            <td>
+              <p>Who you are, what's running, and stopping it. The MCP is always running.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>request [...]</kbd></td>
+            <td>
+              <p>Asks the MCP for something, the way Alan does in the film: <code>REQUEST: MASTER CONTROL PROGRAM RELEASE TRON JA 307020</code>. It isn't in a giving mood.</p>
+            </td>
           </tr>
           <tr>
             <td><kbd>help</kbd></td>
-            <td>Lists every command.</td>
+            <td>
+              <p>Lists every command.</p>
+            </td>
           </tr>
           <tr>
             <td><kbd>clear</kbd></td>
-            <td>Clears the screen.</td>
+            <td>
+              <p>Clears the screen.</p>
+            </td>
           </tr>
         </tbody>
       </table>
+    </section>
+
+    <section class="section" aria-labelledby="walkthrough">
+      <header>
+        <h2 id="walkthrough">Walkthrough</h2>
+        <p class="sub">Spoilers, for if you're stuck.</p>
+      </header>
+
+      <details>
+        <summary>Show the walkthrough</summary>
+        <ol>
+          <li>Read your mail: <kbd>mail</kbd>, then <kbd>3</kbd>. Lora's been running a copy of TRON in the laser lab.</li>
+          <li><kbd>ls /lab/laser</kbd> is denied, and <kbd>ls -l /lab</kbd> shows why: you can't list the lab directory, but you can read a file in it if you know the name.</li>
+          <li><kbd>finger lora</kbd> or <kbd>talk lora</kbd> names today's log: <kbd>cat /lab/laser/log.0922</kbd>. (Today is <kbd>date</kbd>: SEPT 22.)</li>
+          <li>The log says she saved it as addr.bak: <kbd>cp /lab/laser/addr.bak tron.addr</kbd></li>
+          <li><kbd>service start tron</kbd></li>
+        </ol>
+        <p>There's a second ending for anyone who remembers what Flynn types at the terminal in the lab.</p>
+      </details>
     </section>
   </main>
 
