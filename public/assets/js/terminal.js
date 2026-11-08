@@ -55,6 +55,7 @@
     t.lock()            shut the terminal down for good
     t.setPrompt(text)
     t.links             the commands a link asked for (see below)
+    t.history           the lines run so far, oldest first (a copy)
 
   Options also take cps (teletype speed, default 90) and onEscape(t), for
   Escape on an empty command line.
@@ -198,6 +199,7 @@
       boot,
       get input() { return input; },
       get links() { return links.slice(); },
+      get history() { return state.history.slice(); },
     };
 
     // ---------- Output ----------

@@ -35,7 +35,7 @@
       <header>
         <h2 id="commands">Commands</h2>
         <p class="sub">Tron won't start: the address file is empty. Find it.</p>
-        <p>The terminal is on screen only briefly, so most of this fills it out as a Unix of the "future". Poking at what the MCP guards makes it suspicious, and it may log you out. You keep what you've done. Select a command to open the terminal and run it there.</p>
+        <p>Dillinger has suspended all Group 7 access, which Alan's screen in the film calls priority access 7. Alan is in Group 7. The terminal is on screen only briefly, so most of this fills it out as a Unix of the "future". Poking at what the MCP guards makes it suspicious, and it may log you out. You keep what you've done. Select a command to open the terminal and run it there.</p>
       </header>
 
       <table class="commands">
@@ -87,6 +87,24 @@
             </td>
           </tr>
           <tr>
+            <td><kbd>head [-n] [file]</kbd><br><kbd>tail [-n] [file]</kbd><br><kbd>wc [file]</kbd><br><kbd>grep [-i] [-n] [-v] [pattern] [file]</kbd></td>
+            <td>
+              <p>The first or last lines of a file, its counts, and the lines that match. There are no pipes, so name the file. The shell expands <code>*</code> and <code>?</code> in a directory Alan can read.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>file [file]</kbd><br><kbd>strings [file]</kbd><br><kbd>what [file]</kbd></td>
+            <td>
+              <p>What a file holds, the text inside a binary, and its SCCS version strings, which say who wrote each part.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>chmod [mode] [file]</kbd><br><kbd>touch [file]</kbd><br><kbd>mkdir [dir]</kbd><br><kbd>rmdir [dir]</kbd></td>
+            <td>
+              <p>Changes a file's mode (in octal, like <code>644</code>), makes files and directories, and removes empty ones, where Alan's permissions allow.</p>
+            </td>
+          </tr>
+          <tr>
             <td><kbd>cp [from] [to]</kbd><br><kbd>mv [from] [to]</kbd><br><kbd>rm [file]</kbd></td>
             <td>
               <p>Copies, moves, or removes files, where Alan's permissions allow.</p>
@@ -95,7 +113,19 @@
           <tr>
             <td><a class="run" href="../?run=who"><kbd>who</kbd></a><br><kbd>query [user]</kbd></td>
             <td>
-              <p>Who's logged in. <code>query</code>, one of ENCOM's own commands, looks someone up, plan and all.</p>
+              <p>Who's logged in. <code>query</code>, ENCOM's version of <code>finger</code>, looks someone up, plan and all.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><a class="run" href="../?run=last"><kbd>last</kbd></a><br><kbd>last [user]</kbd></td>
+            <td>
+              <p>Who's logged in over the last few days, and from where. Someone keeps dialing in at night.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><a class="run" href="../?run=id"><kbd>id</kbd></a><br><a class="run" href="../?run=groups"><kbd>groups</kbd></a><br><kbd>newgrp [group]</kbd><br><kbd>su [user]</kbd></td>
+            <td>
+              <p>Alan's user and groups, or anyone's (<code>id flynn</code>). Group 7 is suspended, so it doesn't count. Trying to switch groups or users gets the MCP's attention.</p>
             </td>
           </tr>
           <tr>
@@ -113,13 +143,37 @@
           <tr>
             <td><kbd>request [...]</kbd></td>
             <td>
-              <p>Asks the MCP for something, the way Alan does in the film: <code>REQUEST: MASTER CONTROL PROGRAM RELEASE TRON JA 307020</code>. It isn't in a giving mood.</p>
+              <p>Asks the MCP for something, the way Alan does in the film: <code>REQUEST: MASTER CONTROL PROGRAM RELEASE TRON JA 307020</code>. With Group 7 suspended, it isn't in a giving mood.</p>
             </td>
           </tr>
           <tr>
-            <td><a class="run" href="../?run=help"><kbd>help</kbd></a></td>
+            <td><a class="run" href="../?run=uptime"><kbd>uptime</kbd></a><br><a class="run" href="../?run=uname%20-a"><kbd>uname -a</kbd></a><br><a class="run" href="../?run=hostname"><kbd>hostname</kbd></a><br><a class="run" href="../?run=cal%201982"><kbd>cal [[month] year]</kbd></a></td>
             <td>
-              <p>Lists every command: ENCOM's own, the system's, and the shell's. <code>help [command]</code> describes one.</p>
+              <p>About the system, and a calendar (this month, or a year). Try September 1752.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><a class="run" href="../?run=echo%20%24HOME"><kbd>echo $HOME</kbd></a><br><a class="run" href="../?run=env"><kbd>env</kbd></a><br><a class="run" href="../?run=history"><kbd>history</kbd></a></td>
+            <td>
+              <p>The shell's variables, and what you've typed (kept across visits).</p>
+            </td>
+          </tr>
+          <tr>
+            <td><a class="run" href="../?run=space_paranoids"><kbd>space_paranoids</kbd></a><br><kbd>matrix_blaster</kbd></td>
+            <td>
+              <p>The games in <code>/usr/games</code>, credited to Dillinger. They need an arcade cabinet.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><a class="run" href="../?run=help"><kbd>help</kbd></a><br><kbd>man [command]</kbd></td>
+            <td>
+              <p>Lists every command: ENCOM's own, the system's, the shell's, and the games. <code>help [command]</code> or <code>man [command]</code> describes one.</p>
+            </td>
+          </tr>
+          <tr>
+            <td><kbd>exit</kbd><br><kbd>logout</kbd></td>
+            <td>
+              <p>Logs Alan out, and back in. Files stay as they are.</p>
             </td>
           </tr>
           <tr>
@@ -147,6 +201,7 @@
           <li>The log says she saved it as addr.bak: <a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr"><kbd>cp /lab/laser/addr.bak tron.addr</kbd></a></li>
           <li><a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr&amp;run=service%20start%20tron" title="Runs the cp above, then service start tron"><kbd>service start tron</kbd></a></li>
         </ol>
+        <p>Off the path: <a class="run" href="../?run=cat%20/usr/adm/messages"><kbd>cat /usr/adm/messages</kbd></a> shows who's been dialing in and what the MCP did about it, <a class="run" href="../?run=strings%20/tmp/core"><kbd>strings /tmp/core</kbd></a> shows what CLU was looking for, and <a class="run" href="../?run=what%20/usr/games/space_paranoids"><kbd>what /usr/games/space_paranoids</kbd></a> shows who really wrote it.</p>
         <p>There's a second ending for anyone who remembers what Flynn types at the terminal in the lab.</p>
       </details>
     </section>
