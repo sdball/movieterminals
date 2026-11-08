@@ -638,7 +638,7 @@
       ["CARL", "Yes."],
       () => openBook(),
       ["BISHOP", "Give me the number for something impossible to access."],
-      () => point("fed"),
+      () => { named = "fed"; },
       ["CARL", "Okay. What about this? Federal Reserve Transfer Node, Culpeper, Virginia."],
       ["MOTHER", "Yeah, sure. Good luck. Nine hundred billion a day goes through there."],
       ["BISHOP", "That'll do. Punch it in."],
@@ -697,10 +697,9 @@
     book.hidden = false;
   }
 
-  // Carl's finger on an entry
-  function point(id) {
-    for (const entry of BOOK) entry.node.classList.toggle("pointed", entry.id === id);
-  }
+  // the place Carl named last, for "punch it in"; the book doesn't mark
+  // it, so finding the number is up to you
+  let named = null;
 
   // a click on a number types it in, if the command line is free
   function dialFromBook(entry) {
@@ -1339,7 +1338,7 @@
   function whatElse() {
     const next = ["fed", "grid", "atc"].find((id) => !story.cracked.has(id));
     if (!next) return [];
-    return [["BISHOP", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => point(next), ["CARL", NEXT[next]]];
+    return [["BISHOP", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => { named = next; }, ["CARL", NEXT[next]]];
   }
 
   const TARGETS = {
@@ -1370,13 +1369,13 @@
         once("atc decoded",
           ["LIZ", "Oh my God."],
           ["CREASE", "How is this possible?"],
-          ["LIZ", "Cryptography systems are based on mathematical problems so complex they cannot be solved without a key."],
+          ["WHISTLER", "Cryptography systems are based on mathematical problems so complex they cannot be solved without a key."],
           ["LIZ", "Janek must have figured out a way to solve those problems without the key..."],
           ["LIZ", "...and he hardwired it into that chip."],
-          () => (calling("atc") ? ["BISHOP", "All right. Turn it off."] : null),
+          () => (calling("atc") ? ["CREASE", "All right. Turn it off."] : null),
           1500,
           () => (calling("atc") ? ["MOTHER", "Anybody want to crash a couple of passenger jets?"] : null),
-          () => (calling("atc") ? ["BISHOP", "I said turn it off."] : null),
+          () => (calling("atc") ? ["CREASE", "I said turn it off!"] : null),
         );
       },
     },
@@ -1386,10 +1385,10 @@
   function ending() {
     once("ending",
       800,
-      ["CREASE", "So it's a code breaker."],
+      ["CARL", "So it's a code breaker."],
       ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
       1600,
-      ["WHISTLER", "No more secrets."],
+      ["BISHOP", "No more secrets."],
       () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
     );
   }
@@ -1465,7 +1464,7 @@
     "another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
     "stay in that quadrant": () => goTo(current ? pinAt(current.n % 12 === 0 ? current.n - 11 : current.n + 1) : PINS[0]),
     "punch it in": (t) => {
-      const entry = BOOK.find((e) => e.node.classList.contains("pointed"));
+      const entry = BOOK.find((e) => e.id === named);
       return story.live && entry ? dial(t, digitsOf(entry.number)) : false;
     },
     "carl what else you got": () => carlWhatElse(),

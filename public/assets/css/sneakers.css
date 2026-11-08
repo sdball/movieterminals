@@ -467,7 +467,6 @@ body::after { content: none; }
 
 #book .entry {
   all: unset;
-  position: relative;
   display: block;
   cursor: pointer;
   border-radius: 40% 30% 45% 35%;
@@ -481,23 +480,11 @@ body::after { content: none; }
 #book .entry:focus-visible .number { text-decoration: underline 1.5px; text-underline-offset: 0.15em; }
 #book .entry:focus-visible { outline: 2px solid #3aa6ff; outline-offset: 1px; }
 
-/* Carl's finger: a ring in red pencil around the entry */
-#book .entry.pointed::after {
-  content: "";
-  position: absolute;
-  inset: 0.05em -0.35em -0.05em -0.35em;
-  border: 2px solid #c9302c;
-  border-radius: 48% 40% 52% 44% / 55% 50% 46% 50%;
-  transform: rotate(-1.5deg);
-  pointer-events: none;
-}
 
 @media (prefers-reduced-motion: no-preference) {
   #book:not([hidden]) { animation: book-open 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  #book .entry.pointed::after { animation: circle 400ms ease-out both; }
 
   @keyframes book-open { from { opacity: 0; transform: translateY(1.5em) rotate(3deg) scale(0.92); } }
-  @keyframes circle { from { opacity: 0; transform: rotate(-12deg) scale(1.15); } }
 }
 
 /* with the book out, the tiles (spelled, not scattered) and the captions
