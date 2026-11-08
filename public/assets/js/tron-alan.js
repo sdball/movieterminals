@@ -1743,6 +1743,61 @@
     }, 1500);
   }
 
+  // ---------- Tab completion ----------
+  // The first word completes to a command (or, with a /, a program by
+  // path), the rest to paths. Only directories Alan can read complete, the
+  // same as ls: nothing inside /lab/laser, /mcp, or Lora's home. A few
+  // arguments that aren't paths complete too.
+
+  const PROGRAMS = [...new Set([...Object.keys(commands).filter((name) => name !== "&"), "clear", ...Object.keys(GAMES)])].sort();
+  const ARGUMENTS = {
+    man: () => PROGRAMS,
+    help: () => PROGRAMS,
+    query: () => Object.keys(USERS).sort(),
+    talk: () => Object.keys(USERS).sort(),
+    last: () => Object.keys(USERS).sort(),
+    id: () => Object.keys(USERS).sort(),
+    groups: () => Object.keys(USERS).sort(),
+    su: () => Object.keys(USERS).sort(),
+    newgrp: () => GROUP_TABLE.map((g) => g.name).sort(),
+    service: () => ["start", "stop"],
+  };
+
+  // the paths a word could become: directories always, files if keep()
+  function pathsFor(word, keep = () => true) {
+    if (word === "~") return ["~/"];
+    const cut = word.lastIndexOf("/") + 1;
+    const where = word.slice(0, cut);
+    const partial = word.slice(cut);
+    const found = find(where || ".");
+    if (found.error || found.node.type !== "dir" || !can(found.node, "r")) return [];
+    return Object.keys(found.node.children).sort()
+      .filter((name) => name.startsWith(partial) && (!name.startsWith(".") || partial.startsWith(".")))
+      .filter((name) => found.node.children[name].type === "dir" || keep(found.node.children[name]))
+      .map((name) => where + name + (found.node.children[name].type === "dir" ? "/" : " "));
+  }
+
+  function completions(before) {
+    if (state.mail) return [];
+    const word = before.match(/\S*$/)[0];
+    const head = before.slice(0, before.length - word.length);
+    const [cmd, ...args] = head.trim().split(/\s+/).filter(Boolean);
+    if (/[*?]/.test(word)) return [];
+    let choices;
+    if (!cmd) {
+      choices = word.includes("/")
+        ? pathsFor(word, (node) => node.type === "file" && can(node, "x"))
+        : PROGRAMS.filter((name) => name.startsWith(word)).map((name) => name + " ");
+    } else if (Object.hasOwn(ARGUMENTS, cmd) && !args.length) {
+      choices = ARGUMENTS[cmd]().filter((name) => name.startsWith(word)).map((name) => name + " ");
+    } else if (word.startsWith("-") || cmd === "kill" || cmd === "service") {
+      choices = [];
+    } else {
+      choices = pathsFor(word, cmd === "cd" ? () => false : undefined);
+    }
+    return choices.map((choice) => head + choice);
+  }
+
   // ---------- The terminal ----------
 
   const t = Terminal.create({
@@ -1762,6 +1817,8 @@
       return execute(t, line);
     },
     unrecognized: (name) => `${name}: not found`,
+    onTab: (t, before) => completions(before),
+    showCompletions: (t, labels) => t.print(...columns(labels)),
     typingSpeed: 60,
     cursor: "steady",
     name: "tron-alan",

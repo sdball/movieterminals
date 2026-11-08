@@ -60,6 +60,18 @@
   Options also take cps (teletype speed, default 90) and onEscape(t), for
   Escape on an empty command line.
 
+  ---------- Tab completion ----------
+
+    onTab(t, before)    the line up to the caret; return what it could
+                        become, an array of strings (each is the text before
+                        the caret, completed: add a trailing space or "/" as
+                        you like). One is filled in; several fill in what
+                        they share; a second Tab in a row lists them.
+    showCompletions(t, labels)   how the list prints (default: on one line).
+                        A label is a choice past the last space or "/" typed.
+
+    Without onTab, Tab moves the focus as usual. Shift+Tab always does.
+
   ---------- Links and history ----------
 
     A link can run commands: alien/?run=SHIP%20STATUS, or more than one in
@@ -74,9 +86,9 @@
 
   ---------- Keys ----------
 
-    Enter submits; up/down walk the history; Shift+up/down and Page Up/Down
-    scroll; Ctrl+L clears the screen; Ctrl+U clears to the start of the
-    line; Ctrl+C abandons the line. Anything typed while output runs skips
+    Enter submits; Tab completes (with onTab); up/down walk the history;
+    Shift+up/down and Page Up/Down scroll; Ctrl+L clears the screen; Ctrl+U
+    clears to the start of the line; Ctrl+C abandons the line. Anything typed while output runs skips
     the rest of the output and waits on the next line.
 */
 
@@ -116,6 +128,8 @@
       cps: 90,
       cursor: "blink",
       onEscape: null,
+      onTab: null,
+      showCompletions: null,
       ...options,
     };
 
@@ -399,6 +413,55 @@
       screen.classList.add("locked");
     }
 
+    // ---------- Tab completion ----------
+
+    let lastTab = null; // the line and caret at the last Tab, to spot a second
+
+    function commonPrefix(lines) {
+      let shared = lines[0];
+      for (const line of lines) {
+        let i = 0;
+        while (i < shared.length && shared[i] === line[i]) i++;
+        shared = shared.slice(0, i);
+      }
+      return shared;
+    }
+
+    function complete() {
+      const at = input.selectionStart ?? input.value.length;
+      const before = input.value.slice(0, at);
+      const after = input.value.slice(input.selectionEnd ?? at);
+      const again = lastTab === `${at}:${input.value}`;
+      const choices = [...new Set(o.onTab(t, before) || [])];
+      let line = before;
+      if (choices.length === 1) line = choices[0];
+      else if (choices.length > 1) {
+        const shared = commonPrefix(choices);
+        if (shared.length > before.length) line = shared;
+        else if (again) listCompletions(choices, before);
+      }
+      if (line !== before) {
+        // a completion's trailing space, before a space already there, steps over it
+        const caret = line.length;
+        if (/\s$/.test(line) && /^\s/.test(after)) line = line.slice(0, -1);
+        input.value = line + after;
+        input.setSelectionRange(caret, caret);
+        restartBlink();
+      }
+      lastTab = `${input.selectionStart}:${input.value}`;
+      queueCursor();
+    }
+
+    // the line as it stands, then the choices, and back to editing it
+    function listCompletions(choices, before) {
+      const cut = Math.max(before.lastIndexOf(" "), before.lastIndexOf("/")) + 1;
+      const labels = choices.map((choice) => choice.slice(cut).trimEnd());
+      if (!o.clearOnCommand && o.echo) display.append(el("p", { class: "command" }, state.prompt + input.value));
+      if (o.showCompletions) o.showCompletions(t, labels);
+      else print(labels.join("  "));
+      toBottom();
+    }
+
     // ---------- The cursor ----------
     // The page draws it: a block at the caret, showing the letter under it in
     // inverse, steady while you type and hidden for a selection.
@@ -431,6 +494,7 @@
       input.addEventListener(kind, queueCursor);
     }
     input.addEventListener("input", restartBlink);
+    input.addEventListener("input", () => { lastTab = null; });
     document.addEventListener("selectionchange", queueCursor);
     addEventListener("resize", queueCursor);
     document.fonts?.ready.then(queueCursor);
@@ -449,6 +513,13 @@
         e.preventDefault();
         const page = e.key.startsWith("Page") ? screen.clientHeight * 0.75 : parseFloat(getComputedStyle(screen).lineHeight) || 24;
         screen.scrollTop += (e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 1) * page;
+        return;
+      }
+      // Tab completes, and keeps the focus here even while output runs;
+      // Shift+Tab still moves the focus
+      if (e.key === "Tab" && o.onTab && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !e.isComposing) {
+        e.preventDefault();
+        if (state.ready) complete();
         return;
       }
       if (!state.ready) {

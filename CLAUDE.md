@@ -59,10 +59,16 @@ and a fallback, then `t.boot(...)` with its opening.
   under each film's `name`.
 - Each film's script sets `window.term` to its terminal, which is handy in
   the console: `await term.submit("ship status")`.
+- Tab completion is a hook: `onTab(t, before)` gets the line up to the
+  caret and returns what it could become; the engine fills in one choice or
+  what several share, and lists them on a second Tab (`showCompletions`).
+  TRON completes commands, then paths, only in directories Alan can read
+  (nothing inside /lab/laser). Alien has no hook yet.
 - Keys: Enter submits (the form's submit, so a phone's send key works),
-  up/down walk history, Shift+up/down and Page Up/Down scroll, Ctrl+L
-  clears, Ctrl+C abandons the line. Typing anywhere on the page goes to the
-  command line, and a click on the screen focuses it.
+  Tab completes (with `onTab`), up/down walk history, Shift+up/down and
+  Page Up/Down scroll, Ctrl+L clears, Ctrl+C abandons the line. Typing
+  anywhere on the page goes to the command line, and a click on the screen
+  focuses it.
 - Before changing the engine, record each terminal's output for a list of
   commands and compare after; the screen's text is easy to read back from
   `#display` in the console.
