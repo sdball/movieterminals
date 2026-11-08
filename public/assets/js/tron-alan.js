@@ -407,9 +407,9 @@
         ["date", "the date and time", "date"],
         ["env", "your environment", "env"],
         ["file", "guess what a file holds", "file file ..."],
-        ["grep", "search files for a pattern", "grep [-i] [-n] [-v] pattern file ..."],
+        ["grep", "search files for a pattern", "grep [-i] [-n] [-v] pattern [file ...]"],
         ["groups", "the groups you're in", "groups [user]"],
-        ["head", "the first lines of a file", "head [-n] file"],
+        ["head", "the first lines of a file", "head [-n] [file ...]"],
         ["hostname", "this system's name", "hostname"],
         ["id", "your user and group IDs", "id [user]"],
         ["kill", "stop a process", "kill [-9] pid"],
@@ -424,14 +424,16 @@
         ["query", "look up a user, plan and all (ENCOM's finger)", "query [user]"],
         ["rm", "remove files", "rm file ..."],
         ["rmdir", "remove an empty directory", "rmdir directory"],
-        ["strings", "the text in a binary file", "strings file"],
+        ["sort", "sort lines", "sort [-r] [-n] [-f] [file ...]"],
+        ["strings", "the text in a binary file", "strings [file ...]"],
         ["su", "become another user", "su [user]"],
-        ["tail", "the last lines of a file", "tail [-n] file"],
+        ["tail", "the last lines of a file", "tail [-n] [file ...]"],
         ["talk", "talk to someone who's logged in", "talk user"],
         ["touch", "make a file, or update its time", "touch file"],
         ["uname", "the system's name and version", "uname [-a]"],
+        ["uniq", "repeated lines, once", "uniq [-c] [file]"],
         ["uptime", "how long the system's been up", "uptime"],
-        ["wc", "count lines, words, and characters", "wc file ..."],
+        ["wc", "count lines, words, and characters", "wc [-lwc] [file ...]"],
         ["what", "find version (SCCS) strings in a file", "what file ..."],
         ["who", "who's logged in", "who"],
         ["whoami", "who you are", "whoami"],
@@ -784,25 +786,44 @@
   function readFile(t, cmd, path) {
     const found = find(path);
     if (found.error) {
-      t.print(`${cmd}: ${path}: ${found.error}`);
+      t.error(`${cmd}: ${path}: ${found.error}`);
       return { guarded: found.guarded };
     }
     const { node } = found;
     if (node.type === "dir") {
-      t.print(`${cmd}: ${path}: Is a directory`);
+      t.error(`${cmd}: ${path}: Is a directory`);
       return {};
     }
     if (node.guarded) {
       // the MCP's own answer, not a plain Permission denied
-      t.print(...(node.sealed || node.lines));
+      t.error(...(node.sealed || node.lines));
       return { guarded: true };
     }
     if (!can(node, "r")) {
-      t.print(`${cmd}: ${path}: Permission denied`);
+      t.error(`${cmd}: ${path}: Permission denied`);
       return {};
     }
     return { node, lines: node.lines };
   }
+
+  // what a command reads: the files it names, or the pipe if it names none.
+  // { sources: [{ path, lines, node }], guarded }, with errors printed.
+  // From a pipe, path is "" and node is null.
+  function inputs(t, cmd, paths, skip = () => false) {
+    if (!paths.length) return { sources: t.stdin ? [{ path: "", lines: t.stdin, node: null }] : [], guarded: false };
+    let guarded = false;
+    const sources = [];
+    for (const path of paths) {
+      if (skip(path)) continue;
+      const got = readFile(t, cmd, path);
+      guarded ||= got.guarded;
+      if (got.lines) sources.push({ path, lines: got.lines, node: got.node });
+    }
+    return { sources, guarded };
+  }
+
+  // a binary file's text is its strings, for grep and strings
+  const text = ({ lines, node }) => (node?.binary ? node.strings || [] : lines);
 
   // -n 5 or -5 for head and tail
   function countArg(args, fallback = 10) {
@@ -825,6 +846,7 @@
   ];
 
   async function suspect(t, amount = 1) {
+    t = t.screen;
     state.suspicion += amount;
     if (state.suspicion > WARNINGS.length) return logout(t, ["MCP: SESSION TERMINATED.", "MCP: END OF LINE."]);
     await sleep(500);
@@ -833,6 +855,7 @@
 
   // the soft logout: the session ends, files stay as they are
   async function logout(t, lines) {
+    t = t.screen;
     if (lines) {
       await sleep(500);
       await t.type(lines, { cps: 40 });
@@ -1015,6 +1038,7 @@
         return read(t, Number(n));
       }
       headers(t);
+      if (t.piped) return;
       state.mail = true;
       t.setPrompt("\n& ");
     },
@@ -1031,7 +1055,7 @@
         const found = find(path);
         if (found.error) {
           guarded ||= found.guarded;
-          return t.print(`ls: ${path}: ${found.error}`);
+          return t.error(`ls: ${path}: ${found.error}`);
         }
         const { node } = found;
         const line = (name, n) => long
@@ -1040,7 +1064,7 @@
         if (node.type !== "dir") return t.print(line(path, node));
         if (!can(node, "r")) {
           guarded ||= node.guarded;
-          return t.print(`ls: ${path}: Permission denied`);
+          return t.error(`ls: ${path}: Permission denied`);
         }
         if (targets.length > 1) {
           if (i) t.print("");
@@ -1051,6 +1075,7 @@
           .sort(([a], [b]) => (a < b ? -1 : 1));
         if (all) entries.unshift([".", node], ["..", find(join(found.parts.slice(0, -1))).node]);
         if (long) t.print(...entries.map(([name, n]) => line(name, n)));
+        else if (t.piped) t.print(...entries.map(([name]) => name));
         else t.print(...columns(entries.map(([name, n]) => (n.type === "dir" ? name + "/" : name))));
       });
       if (guarded) return suspect(t);
@@ -1075,12 +1100,10 @@
     },
 
     cat(t, paths) {
-      if (!paths.length) return t.print("USAGE: CAT [FILENAME]");
-      let guarded = false;
-      for (const path of paths) {
-        const got = readFile(t, "cat", path);
-        guarded ||= got.guarded;
-        if (got.lines?.length) t.print(...(got.node.hang ? hang(got.node.hang, got.lines) : got.lines));
+      if (!paths.length && !t.stdin) return t.error("USAGE: CAT [FILENAME]");
+      const { sources, guarded } = inputs(t, "cat", paths);
+      for (const { lines, node } of sources) {
+        if (lines.length) t.print(...(node?.hang && !t.piped ? hang(node.hang, lines) : lines));
       }
       if (guarded) return suspect(t);
     },
@@ -1093,25 +1116,25 @@
       return ends(t, "tail", args, (lines, n) => (n ? lines.slice(-n) : []));
     },
 
-    wc(t, paths) {
-      if (!paths.length) return t.print("usage: wc file ...");
-      let guarded = false;
+    // -l, -w, -c for lines, words, characters; all three by default
+    wc(t, args) {
+      const flags = args.filter((a) => /^-[lwc]+$/.test(a)).join("");
+      const paths = args.filter((a) => !/^-[lwc]+$/.test(a));
+      if (!paths.length && !t.stdin) return t.error("usage: wc [-lwc] [file ...]");
+      const shown = flags ? [..."lwc"].map((f) => flags.includes(f)) : [true, true, true];
+      const row = (counts, name) => counts.filter((_, i) => shown[i]).map((c, i) => String(c).padStart(i ? 8 : 7)).join("") + (name ? " " + name : "");
+      const { sources, guarded } = inputs(t, "wc", paths);
       const total = [0, 0, 0];
-      let counted = 0;
-      for (const path of paths) {
-        const got = readFile(t, "wc", path);
-        guarded ||= got.guarded;
-        if (!got.lines) continue;
+      for (const { path, lines, node } of sources) {
         const counts = [
-          got.lines.length,
-          got.lines.reduce((sum, line) => sum + line.split(/\s+/).filter(Boolean).length, 0),
-          size(got.node),
+          lines.length,
+          lines.reduce((sum, line) => sum + line.split(/\s+/).filter(Boolean).length, 0),
+          node ? size(node) : lines.reduce((sum, line) => sum + line.length + 1, 0),
         ];
         counts.forEach((c, i) => (total[i] += c));
-        counted++;
-        t.print(counts.map((c, i) => String(c).padStart(i ? 8 : 7)).join("") + " " + path);
+        t.print(row(counts, path));
       }
-      if (counted > 1) t.print(total.map((c, i) => String(c).padStart(i ? 8 : 7)).join("") + " total");
+      if (sources.length > 1) t.print(row(total, "total"));
       if (guarded) return suspect(t);
     },
 
@@ -1119,8 +1142,7 @@
       const flags = new Set();
       while (args[0]?.startsWith("-") && args[0].length > 1) for (const f of args.shift().slice(1)) flags.add(f);
       const [rawPattern, ...paths] = args;
-      if (!rawPattern) return t.print("usage: grep [-i] [-n] [-v] pattern file ...");
-      if (!paths.length) return t.print("grep: no files (there's no pipe on this terminal; name a file)");
+      if (!rawPattern || (!paths.length && !t.stdin)) return t.error("usage: grep [-i] [-n] [-v] pattern [file ...]");
       const pattern = rawPattern.replace(/^(["'])(.*)\1$/, "$2");
       let re;
       try {
@@ -1128,19 +1150,13 @@
       } catch {
         re = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags.has("i") ? "i" : "");
       }
-      let guarded = false;
+      // a binary file: grep its strings, the way you'd want it to
+      const { sources, guarded } = inputs(t, "grep", paths, (path) => find(path).node?.type === "dir");
       const out = [];
-      for (const path of paths) {
-        const found = find(path);
-        if (found.node?.type === "dir") continue;
-        const got = readFile(t, "grep", path);
-        guarded ||= got.guarded;
-        if (!got.lines) continue;
-        // a binary file: grep its strings, the way you'd want it to
-        const lines = got.node.binary ? got.node.strings || [] : got.lines;
-        lines.forEach((line, i) => {
+      for (const source of sources) {
+        text(source).forEach((line, i) => {
           if (re.test(line) === flags.has("v")) return;
-          out.push(`${paths.length > 1 ? path + ":" : ""}${flags.has("n") ? i + 1 + ":" : ""}${line}`);
+          out.push(`${paths.length > 1 ? source.path + ":" : ""}${flags.has("n") ? i + 1 + ":" : ""}${line}`);
         });
       }
       if (out.length) t.print(...out);
@@ -1169,15 +1185,41 @@
     },
 
     strings(t, paths) {
-      if (!paths.length) return t.print("usage: strings file ...");
-      let guarded = false;
-      for (const path of paths) {
-        const got = readFile(t, "strings", path);
-        guarded ||= got.guarded;
-        if (!got.lines) continue;
-        const lines = got.node.binary ? got.node.strings || [] : got.lines;
-        if (lines.length) t.print(...lines);
+      if (!paths.length && !t.stdin) return t.error("usage: strings [file ...]");
+      const { sources, guarded } = inputs(t, "strings", paths);
+      for (const source of sources) if (text(source).length) t.print(...text(source));
+      if (guarded) return suspect(t);
+    },
+
+    // -r reverses, -n sorts by number, -f folds case
+    sort(t, args) {
+      const flags = args.filter((a) => /^-[rnf]+$/.test(a)).join("");
+      const paths = args.filter((a) => !/^-[rnf]+$/.test(a));
+      if (!paths.length && !t.stdin) return t.error("usage: sort [-r] [-n] [-f] [file ...]");
+      const { sources, guarded } = inputs(t, "sort", paths);
+      const key = (line) => (flags.includes("f") ? line.toUpperCase() : line);
+      const number = (line) => parseFloat(line.trim()) || 0;
+      const lines = sources.flatMap((source) => source.lines).sort((a, b) => {
+        const order = flags.includes("n") ? number(a) - number(b) : 0;
+        return order || (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0);
+      });
+      if (flags.includes("r")) lines.reverse();
+      if (lines.length) t.print(...lines);
+      if (guarded) return suspect(t);
+    },
+
+    // repeated lines, side by side, once; -c counts them
+    uniq(t, args) {
+      const count = args.includes("-c");
+      const paths = args.filter((a) => a !== "-c");
+      if (!paths.length && !t.stdin) return t.error("usage: uniq [-c] [file]");
+      const { sources, guarded } = inputs(t, "uniq", paths.slice(0, 1));
+      const runs = [];
+      for (const line of sources.flatMap((source) => source.lines)) {
+        if (runs.length && runs[runs.length - 1].line === line) runs[runs.length - 1].n++;
+        else runs.push({ line, n: 1 });
       }
+      if (runs.length) t.print(...runs.map(({ line, n }) => (count ? `${String(n).padStart(4)} ${line}` : line)));
       if (guarded) return suspect(t);
     },
 
@@ -1565,18 +1607,15 @@
   // head and tail: the ends of each file
   function ends(t, cmd, args, take) {
     const { n, paths } = countArg(args);
-    if (!paths.length) return t.print(`usage: ${cmd} [-n] file ...`);
-    let guarded = false;
-    paths.forEach((path, i) => {
-      const got = readFile(t, cmd, path);
-      guarded ||= got.guarded;
-      if (!got.lines) return;
+    if (!paths.length && !t.stdin) return t.error(`usage: ${cmd} [-n] [file ...]`);
+    const { sources, guarded } = inputs(t, cmd, paths);
+    sources.forEach(({ path, lines, node }, i) => {
       if (paths.length > 1) {
         if (i) t.print("");
         t.print(`==> ${path} <==`);
       }
-      const lines = take(got.lines, n);
-      if (lines.length) t.print(...(got.node.hang ? hang(got.node.hang, lines) : lines));
+      const taken = take(lines, n);
+      if (taken.length) t.print(...(node?.hang && !t.piped ? hang(node.hang, taken) : taken));
     });
     if (guarded) return suspect(t);
   }
@@ -1781,7 +1820,7 @@
     if (state.mail) return [];
     const word = before.match(/\S*$/)[0];
     const head = before.slice(0, before.length - word.length);
-    const [cmd, ...args] = head.trim().split(/\s+/).filter(Boolean);
+    const [cmd, ...args] = head.slice(head.lastIndexOf("|") + 1).trim().split(/\s+/).filter(Boolean);
     if (/[*?]/.test(word)) return [];
     let choices;
     if (!cmd) {
@@ -1804,8 +1843,9 @@
     prompt: PROMPT,
     commands,
     filters: [
-      // the shell expands * and ?, except at mail's & prompt
-      (line) => (state.mail ? line : line.trim().split(/\s+/).map((word, i) => (i ? glob(word) : word)).join(" ")),
+      // the shell expands * and ?, except at mail's & prompt; a | is a
+      // word of its own, even without spaces
+      (line) => (state.mail ? line : line.replace(/\|/g, " | ").trim().split(/\s+/).map((word, i) => (i ? glob(word) : word)).join(" ")),
       // at the mail program's & prompt, every line goes to mail
       (line) => (state.mail ? `& ${line}` : line),
     ],
@@ -1818,6 +1858,8 @@
     },
     unrecognized: (name) => `${name}: not found`,
     onTab: (t, before) => completions(before),
+    pipes: () => !state.mail,
+    syntaxError: (token) => `syntax error: \`${token}' unexpected`,
     showCompletions: (t, labels) => t.print(...columns(labels)),
     typingSpeed: 60,
     cursor: "steady",

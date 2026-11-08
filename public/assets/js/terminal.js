@@ -72,6 +72,17 @@
 
     Without onTab, Tab moves the focus as usual. Shift+Tab always does.
 
+  ---------- Pipes ----------
+
+    With pipes: true (or a function that says whether, per line), "a | b"
+    runs a, then b, in turn. In a stage before the last, t.print and t.type
+    write lines of text into the pipe instead of the screen, and t.piped is
+    true. The next stage reads them as t.stdin (an array of strings; null
+    when there's no pipe). t.error(...lines) always prints to the screen, as
+    does t.screen, the terminal itself: use them for errors and anything
+    that shouldn't go down the pipe. An empty stage ("ls |") prints
+    syntaxError("|").
+
   ---------- Links and history ----------
 
     A link can run commands: alien/?run=SHIP%20STATUS, or more than one in
@@ -130,6 +141,8 @@
       onEscape: null,
       onTab: null,
       showCompletions: null,
+      pipes: false,
+      syntaxError: (token) => `syntax error near ${token}`,
       ...options,
     };
 
@@ -214,7 +227,11 @@
       get input() { return input; },
       get links() { return links.slice(); },
       get history() { return state.history.slice(); },
+      stdin: null,      // a pipe's lines, in a stage after the first
+      piped: false,     // true when output goes into a pipe, not the screen
+      error: print,     // to the screen, even from inside a pipe
     };
+    t.screen = t;
 
     // ---------- Output ----------
 
@@ -349,28 +366,67 @@
       }
 
       const filtered = o.filters.reduce((acc, filter) => filter(acc), line);
-      const [name, ...args] = filtered.split(/\s+/);
+      const piping = typeof o.pipes === "function" ? o.pipes() : o.pipes;
+      const stages = piping ? filtered.split("|").map((stage) => stage.trim()) : [filtered];
       let result;
-      try {
-        if (Object.hasOwn(commands, name)) result = commands[name](t, args, filtered);
-        else if (!(o.fallback && (result = o.fallback(t, filtered)))) print(o.unrecognized(name, filtered));
-      } catch (error) {
-        printError(error);
-      }
+      if (stages.length === 1) result = dispatch(t, filtered);
+      else if (stages.some((stage) => !stage)) print(o.syntaxError("|"));
+      else result = pipeline(stages);
       toBottom();
-      if (!result || typeof result.then !== "function") return Promise.resolve();
+      if (!result) return Promise.resolve();
 
-      // an async command: hide the input until it's done
+      // an async command or a pipeline: hide the input until it's done
       setReady(false);
       busy(true);
-      return result.then(
-        (value) => { if (value === false) print(o.unrecognized(name, filtered)); },
-        printError,
-      ).finally(() => {
+      return result.catch(printError).finally(() => {
         busy(false);
         setReady(true);
       });
     }
+
+    // run one command; a promise if it's async
+    function dispatch(tt, line) {
+      const [name, ...args] = line.split(/\s+/);
+      let result;
+      try {
+        if (Object.hasOwn(commands, name)) result = commands[name](tt, args, line);
+        else if (!(o.fallback && (result = o.fallback(tt, line)))) print(o.unrecognized(name, line));
+      } catch (error) {
+        printError(error);
+      }
+      if (!result || typeof result.then !== "function") return undefined;
+      return result.then((value) => { if (value === false) print(o.unrecognized(name, line)); }, printError);
+    }
+
+    // ---------- Pipes ----------
+    // Each stage runs in turn. A stage before the last prints into a pipe,
+    // as lines of text, and the next reads them as t.stdin. t.error and
+    // t.screen still reach the screen.
+
+    async function pipeline(stages) {
+      let stdin = null;
+      for (const [i, line] of stages.entries()) {
+        const out = i < stages.length - 1 ? [] : null;
+        await dispatch(stage(stdin, out), line);
+        stdin = out;
+      }
+    }
+
+    function stage(stdin, out) {
+      const s = Object.create(t);
+      s.stdin = stdin;
+      if (out) {
+        s.piped = true;
+        s.print = (...lines) => {
+          if (!lines.length) lines = [""];
+          for (const line of lines) out.push(...asText(line).split("\n"));
+        };
+        s.type = async (lines) => s.print(...lines);
+      }
+      return s;
+    }
+
+    const asText = (line) => (line instanceof Node ? line.textContent : line == null ? "" : String(line));
 
     function printError(error) {
       console.error(error);

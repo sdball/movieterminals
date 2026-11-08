@@ -87,9 +87,9 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>head [-n] [file]</kbd><br><kbd>tail [-n] [file]</kbd><br><kbd>wc [file]</kbd><br><kbd>grep [-i] [-n] [-v] [pattern] [file]</kbd></td>
+            <td><kbd>head [-n] [file]</kbd><br><kbd>tail [-n] [file]</kbd><br><kbd>wc [-lwc] [file]</kbd><br><kbd>grep [-i] [-n] [-v] [pattern] [file]</kbd><br><kbd>sort [-r] [-n] [-f] [file]</kbd><br><kbd>uniq [-c] [file]</kbd></td>
             <td>
-              <p>The first or last lines of a file, its counts, and the lines that match. There are no pipes, so name the file. The shell expands <code>*</code> and <code>?</code> in directories Alan can read. ENCOM has a lot of employees: try <a class="run" href="../?run=grep%20-i%20mcp%20/home/*/.plan"><kbd>grep -i mcp /home/*/.plan</kbd></a> or <a class="run" href="../?run=grep%20Laser%20/etc/passwd"><kbd>grep Laser /etc/passwd</kbd></a>.</p>
+              <p>The first or last lines of a file, its counts, the lines that match, the lines in order, and repeated lines once. Without a file, each reads from a pipe: <a class="run" href="../?run=ls%20-l%20%7C%20grep%20group7"><kbd>ls -l | grep group7</kbd></a>, <a class="run" href="../?run=who%20%7C%20wc%20-l"><kbd>who | wc -l</kbd></a>, <a class="run" href="../?run=strings%20/tmp/core%20%7C%20wc"><kbd>strings /tmp/core | wc</kbd></a>. The shell expands <code>*</code> and <code>?</code> in directories Alan can read. ENCOM has a lot of employees: try <a class="run" href="../?run=grep%20-i%20mcp%20/home/*/.plan"><kbd>grep -i mcp /home/*/.plan</kbd></a> or <a class="run" href="../?run=grep%20Laser%20/etc/passwd"><kbd>grep Laser /etc/passwd</kbd></a>.</p>
             </td>
           </tr>
           <tr>

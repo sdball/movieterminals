@@ -64,6 +64,13 @@ and a fallback, then `t.boot(...)` with its opening.
   what several share, and lists them on a second Tab (`showCompletions`).
   TRON completes commands, then paths, only in directories Alan can read
   (nothing inside /lab/laser). Alien has no hook yet.
+- Pipes: with `pipes` on (TRON, except at mail's `&` prompt), `a | b` runs
+  the stages in turn. Before the last, `t.print` and `t.type` write lines
+  into the pipe (`t.piped` is true), and the next stage reads `t.stdin`.
+  Errors go to `t.error`, and the MCP's lines to `t.screen`, so they reach
+  the screen and not the pipe. TRON's readers (cat, grep, head, tail, wc,
+  strings, sort, uniq) take the pipe when they name no file, through
+  `inputs()`; ls prints a name a line into a pipe.
 - Keys: Enter submits (the form's submit, so a phone's send key works),
   Tab completes (with `onTab`), up/down walk history, Shift+up/down and
   Page Up/Down scroll, Ctrl+L clears, Ctrl+C abandons the line. Typing
