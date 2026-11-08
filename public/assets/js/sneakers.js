@@ -634,14 +634,16 @@
       ["BISHOP", "Too many secrets."],
       ["WHISTLER", "Bish, I think you better come over here."],
       800,
-      ["BISHOP", "Carl, you got your little black book?"],
+      ["WHISTLER", "Carl, you got your little black book?"],
       ["CARL", "Yes."],
       () => openBook(),
-      ["BISHOP", "Give me the number for something impossible to access."],
+      ["WHISTLER", "Give me the number for something impossible to access."],
       () => { named = "fed"; },
       ["CARL", "Okay. What about this? Federal Reserve Transfer Node, Culpeper, Virginia."],
-      ["MOTHER", "Yeah, sure. Good luck. Nine hundred billion a day goes through there."],
-      ["BISHOP", "That'll do. Punch it in."],
+      ["MOTHER", "Yeah, sure. Good luck."],
+      ["CARL", "Nine hundred billion a day goes through there."],
+      ["WHISTLER", "That'll do. Punch it in."],
+      ["CARL", "You won't get in, it's encrypted."],
     );
   }
 
@@ -1333,20 +1335,20 @@
   // ---------- The three places, and what the team says ----------
 
   const calling = (id) => link?.target.id === id;
-  const NEXT = { fed: "Federal Reserve Transfer Node.", grid: "National power grid.", atc: "Air traffic control system." };
+  const NEXT = { fed: "Federal Reserve Transfer Node.", grid: "National power grid?", atc: "Air traffic control system." };
 
   function whatElse() {
     const next = ["fed", "grid", "atc"].find((id) => !story.cracked.has(id));
     if (!next) return [];
-    return [["BISHOP", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => { named = next; }, ["CARL", NEXT[next]]];
+    return [["WHISTLER", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => { named = next; }, ["CARL", NEXT[next]]];
   }
 
   const TARGETS = {
     fed: {
       id: "fed",
-      connected: () => once("fed connected", ["MOTHER", "You won't get in. It's encrypted."], 400, () => (calling("fed") && !link.decoding ? ["WHISTLER", "Mother. That last contact."] : null)),
-      decoded: () => once("fed decoded", ["MOTHER", "Take a look at this, boys."], ["MOTHER", "Anybody want to shut down the Federal Reserve?"],
-        ["BISHOP", "Hey, hey, hey! Don't screw around with that thing!"], ...whatElse()),
+      connected: () => once("fed connected", ["CARL", "See?"], 400, () => (calling("fed") && !link.decoding ? ["WHISTLER", "Mother. That last contact."] : null)),
+      decoded: () => once("fed decoded", ["WHISTLER", "Take a look at this, boys."], ["WHISTLER", "Anybody want to shut down the Federal Reserve?"],
+        ["CREASE", "Hey, hey, hey! Don't screw around with that thing!"], ...whatElse()),
       choose(line) {
         if (!Object.hasOwn(FED_CHOICES, line)) return false;
         say(FED_CHOICES[line]);
@@ -1358,7 +1360,7 @@
       draw: drawGrid,
       connected: () => {},
       decoding: () => once("grid decoding", ["MOTHER", "Okay, here we come..."], ["MOTHER", "Rolling."]),
-      decoded: () => once("grid decoded", ["CARL", "Wow."], ["BISHOP", "Unbelievable."], ["MOTHER", "Anybody want to black out New England?"], ...whatElse()),
+      decoded: () => once("grid decoded", ["WHISTLER", "Wow."], ["MOTHER", "Unbelievable."], ["WHISTLER", "Anybody want to black out New England?"], ...whatElse()),
     },
     atc: {
       id: "atc",
@@ -1374,8 +1376,9 @@
           ["LIZ", "...and he hardwired it into that chip."],
           () => (calling("atc") ? ["CREASE", "All right. Turn it off."] : null),
           1500,
-          () => (calling("atc") ? ["MOTHER", "Anybody want to crash a couple of passenger jets?"] : null),
+          () => (calling("atc") ? ["WHISTLER", "Anybody want to crash a couple of passenger jets?"] : null),
           () => (calling("atc") ? ["CREASE", "I said turn it off!"] : null),
+          () => (calling("atc") ? ["BISHOP", "Turn it off!"] : null),
         );
       },
     },
@@ -1467,9 +1470,9 @@
       const entry = BOOK.find((e) => e.id === named);
       return story.live && entry ? dial(t, digitsOf(entry.number)) : false;
     },
-    "carl what else you got": () => carlWhatElse(),
+    "Carl what else you got": () => carlWhatElse(),
     "what else you got": () => carlWhatElse(),
-    "carl what else": () => carlWhatElse(),
+    "Carl what else": () => carlWhatElse(),
     "what else": () => carlWhatElse(),
   };
 
