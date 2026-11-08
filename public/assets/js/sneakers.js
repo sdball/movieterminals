@@ -10,14 +10,13 @@
 
   Act 1, here: find the contact that makes the box talk. Most pins read as
   what they are (ground, power, a clock, address lines counting). The right
-  side's middle pins all read "kind of like the same thing", and the pin
-  around the corner from them is the one: on it, the screen runs with
-  formulas. Move off it to another pin and Whistler wants it back; stay on
-  it and the box is live. Act 2, Carl's black book and
-  dialing out, comes next.
+  side's pins mostly read "kind of like the same thing", and the one in the
+  middle of them, pin 31, is the one: on it, the screen runs with formulas.
+  Go past it to the next pin and Whistler wants it back; stay on it and the
+  box is live. Act 2, Carl's black book and dialing out, comes next.
 
   window.term is the terminal, and window.bench the box:
-  bench.touch(37) puts the probe on pin 37.
+  bench.touch(31) puts the probe on pin 31.
 */
 
 (function () {
@@ -40,7 +39,7 @@
     probes: 0,          // contacts made
     kinds: new Set(),   // kinds of pin Whistler has named
     keys: new Set(),    // the right side's pins that read alike
-    sinceKeys: 0,       // contacts since "try another quadrant"
+    sinceKeys: 0,       // contacts since finding the pins that read alike
     sawMagic: false,    // went from the decryption pin to another
     live: false,        // the box is talking
     said: new Set(),    // one-time lines already said
@@ -144,9 +143,10 @@
     ["vcc", "VCC"], ["gnd", "GND"], ["clk", "CLK"],
     ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ["data", `D${i}`]),
     ["ctrl", "RD"], ["ctrl", "WR"], ["vcc", "VCC"], ["gnd", "GND"],
-    ["gnd", "GND"], ["vcc", "VCC"], ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ["key", `K${i}`]),
-    ["sync", "SYNC"], ["nc", "NC"],
-    ["magic", "?"], ...[8, 9, 10, 11, 12, 13, 14, 15].map((i) => ["addr", `A${i}`]),
+    // the right side: the pin that matters, in the middle of eight that read alike
+    ["gnd", "GND"], ["vcc", "VCC"], ...[0, 1, 2, 3].map((i) => ["key", `K${i}`]),
+    ["magic", "?"], ...[4, 5, 6, 7].map((i) => ["key", `K${i}`]), ["sync", "SYNC"],
+    ["nc", "NC"], ...[8, 9, 10, 11, 12, 13, 14, 15].map((i) => ["addr", `A${i}`]),
     ["ctrl", "INT"], ["ctrl", "CS"], ["nc", "NC"],
   ];
 
@@ -248,13 +248,39 @@
   const status = document.getElementById("status");
   const display = document.getElementById("display");
 
-  // as in the film, the screen shows the pin under the probe and nothing else
+  // As in the film, the screen shows the pin under the probe and nothing
+  // else, typed out fast, a character at a time (about a row every quarter
+  // second). A new contact starts over.
+  const ROW_CPS = 150;
+  let typing = 0;
+
   function showRows(pin, bytes) {
+    stopOutput();
     t.clear();
-    bytes.forEach((eight, i) => {
+    const lines = bytes.map((eight, i) => {
       const at = `0075:${(0x1050 + i * 8).toString(16).padStart(4, "0")}`;
-      t.print(el("p", { class: "row" }, `${at}  ${eight.slice(0, 4).map(hex).join(" ")}  ${eight.slice(4).map(hex).join(" ")}`));
+      return `${at}  ${eight.slice(0, 4).map(hex).join(" ")}  ${eight.slice(4).map(hex).join(" ")}`;
     });
+    if (reduceMotion.matches) {
+      t.print(...lines.map((line) => el("p", { class: "row" }, line)));
+      return;
+    }
+    const start = performance.now();
+    let node = null;
+    let at = 0; // characters shown so far, across the rows
+    const total = lines.reduce((sum, line) => sum + line.length, 0);
+    const frame = (now) => {
+      const due = Math.min(total, Math.floor(((now - start) * ROW_CPS) / 1000));
+      for (; at < due; at++) {
+        let i = at;
+        let r = 0;
+        while (i >= lines[r].length) i -= lines[r++].length;
+        if (i === 0) display.append((node = el("p", { class: "row" })));
+        node.textContent += lines[r][i];
+      }
+      typing = at < total ? requestAnimationFrame(frame) : 0;
+    };
+    typing = requestAnimationFrame(frame);
   }
 
   // the decryption pin: formulas, scrolling for as long as the probe is on
@@ -266,7 +292,8 @@
     "g cao=[de]", "e11,13,53=q134w", "1,13,53=q134.998a", "67.8/1124ap[des]", "dqert=00x", "c=q146.67123",
     "o=[a]", "blac=ploo", "cab=(1", "asiu",
   ];
-  const WIDE = 62;
+  const WIDE = 34; // the film's block is about a third of the screen across
+  const LINES_PER_SECOND = 40;
 
   // a few tokens at the left, one pushed toward the right, and whatever
   // runs past the edge cut off
@@ -280,24 +307,32 @@
 
   let noise = 0;
   function startNoise() {
-    stopNoise();
+    stopOutput();
     t.clear();
     if (reduceMotion.matches) {
       // a screenful that holds still
       t.print(...Array.from({ length: 24 }, formulaLine));
       return;
     }
-    const tick = () => {
-      t.print(formulaLine());
-      while (display.children.length > 80) display.firstElementChild.remove();
-      noise = setTimeout(tick, 70);
+    const start = performance.now();
+    let shown = 0;
+    const frame = (now) => {
+      const due = Math.floor(((now - start) * LINES_PER_SECOND) / 1000) + 1;
+      if (due > shown) {
+        t.print(...Array.from({ length: due - shown }, formulaLine));
+        shown = due;
+        while (display.children.length > 80) display.firstElementChild.remove();
+      }
+      noise = requestAnimationFrame(frame);
     };
-    tick();
+    noise = requestAnimationFrame(frame);
   }
 
-  function stopNoise() {
-    clearTimeout(noise);
-    noise = 0;
+  // stop whatever the screen is in the middle of
+  function stopOutput() {
+    cancelAnimationFrame(noise);
+    cancelAnimationFrame(typing);
+    noise = typing = 0;
   }
 
   // ---------- The probe ----------
@@ -380,24 +415,23 @@
       const found = story.keys.size;
       if (found === 1) once("stay", ["WHISTLER", "Hold on. Stay in that quadrant."]);
       if (found === 2) once("same", ["WHISTLER", "It's kind of like the same thing."]);
-      if (found === 4) once("another", ["WHISTLER", "Try another quadrant."]);
     } else if (!story.kinds.has(pin.kind)) {
       story.kinds.add(pin.kind);
       chat("WHISTLER", FIRST_READ[pin.kind]);
     }
-    if (story.keys.size >= 4) story.sinceKeys++;
+    if (story.keys.size) story.sinceKeys++;
 
     if (story.probes === 3 && !story.keys.size) once("one more", ["WHISTLER", "Give me another one."]);
     if (story.probes === 5) socrates();
     if (story.probes >= 14 && !story.keys.size) once("nudge", ["WHISTLER", "Work your way around to the right side, Mother."]);
-    if (story.sinceKeys >= 8) once("corner", ["WHISTLER", "Try around the corner. Up top."]);
+    if (story.sinceKeys >= 8) once("middle", ["WHISTLER", "Somewhere in the middle of that row, Mother."]);
   }
 
   function lifted(pin) {
     status.textContent = "NO CONTACT";
     setLights([]);
     clearTimeout(dwell);
-    stopNoise();
+    cancelAnimationFrame(noise);
   }
 
   const FIRST_READ = {
@@ -564,6 +598,7 @@
       return goTo(pinAt((n - 1) * 12 + 1));
     },
     reboot(t) {
+      stopOutput();
       t.clear();
     },
   };
@@ -604,7 +639,7 @@
   // the footer's keys, by click or by key
   const ACTIONS = {
     next: () => step(1),
-    reboot: () => t.clear(),
+    reboot: () => commands.reboot(t),
     help: () => commands.help(t),
   };
 
