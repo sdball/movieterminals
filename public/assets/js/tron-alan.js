@@ -88,10 +88,11 @@
   //
   // In 1982 /etc/passwd holds the password hashes themselves (DES crypt:
   // two characters of salt, eleven of hash), readable by everyone. "*" never
-  // matches, so the MCP, which never logs in, can't. Flynn's account is
-  // "closed", but nobody locked it: his hash is still there, which is how
-  // someone with Group 7 clearance keeps dialing in. The cast's hashes are
-  // real; they're for anyone who cracks them.
+  // matches, so the MCP, which never logs in, can't, and neither can Flynn
+  // since he was fired. But the night before, he made himself three more
+  // accounts (see The staff), and that's who keeps dialing in with Group 7
+  // clearance. The cast's hashes are real; they're for anyone who cracks
+  // them.
   //
   // Access groups go by department: group2 is the executives, up to group7,
   // Software, which Dillinger has frozen. There's no group1: gid 1 is the
@@ -107,7 +108,7 @@
     roy: { hash: "RosfPDhCfgdHY", uid: 104, gid: 100, full: "Roy Abernathy", dept: "Systems", phone: 4300, home: "/home/roy", since: "Last login Wed Sep 22 16:40 on tty5", access: "group 6" },
     lora: { hash: "Lbciv4XkOnpeY", uid: 107, gid: 100, full: "Lora Baines", dept: "Laser Lab", phone: 4512, home: "/home/lora", since: "On since Wed Sep 22 07:52 on tty3 (laser bay)", access: SUSPENDED },
     alan1: { hash: "a1EyoPqmaMO0U", uid: 108, gid: 100, full: "Alan Bradley", dept: "Software", phone: 4471, home: HOME, since: "On since Wed Sep 22 08:31 on tty7", access: SUSPENDED },
-    flynn: { hash: "kFbzWOGUNhYXQ", uid: 109, gid: 7, full: "Kevin Flynn", dept: "Software", phone: 4440, home: "/home/flynn", since: "On since Wed Sep 22 18:11 on ttyd0 (dialup)", access: "group 7, ACCOUNT CLOSED 06/04/82" },
+    flynn: { uid: 109, gid: 7, full: "Kevin Flynn", dept: "Software", phone: 4440, home: "/home/flynn", since: "Last login Thu Jun 03 23:58 on ttyd0 (dialup)", access: "group 7, ACCOUNT CLOSED 06/04/82" },
   };
 
   const GROUP_TABLE = [
@@ -235,25 +236,38 @@
   // logins for last: { who, tty, from, day (index in DAYS), start, end }
   // in minutes, end null while logged in
   const LOGINS = [
-    { who: "flynn", tty: "ttyd0", from: "dialup", day: 3, start: 18 * 60 + 11, end: null },
+    { who: "sam1", tty: "ttyd0", from: "dialup", day: 3, start: 18 * 60 + 11, end: null },
     { who: "alan1", tty: "tty7", from: "", day: 3, start: 8 * 60 + 31, end: null },
     { who: "lora", tty: "tty3", from: "laser bay", day: 3, start: 7 * 60 + 52, end: null },
     { who: "dillinger", tty: "console", from: "", day: 3, start: 6 * 60 + 45, end: null },
     { who: "roy", tty: "tty5", from: "", day: 3, start: 16 * 60 + 40, end: 17 * 60 + 55 },
-    { who: "flynn", tty: "ttyd0", from: "dialup", day: 2, start: 23 * 60 + 41, end: 23 * 60 + 46 },
+    { who: "lou1", tty: "ttyd0", from: "dialup", day: 2, start: 23 * 60 + 41, end: 23 * 60 + 46 },
     { who: "lora", tty: "tty3", from: "laser bay", day: 2, start: 8 * 60 + 38, end: 18 * 60 + 50 },
     { who: "alan1", tty: "tty7", from: "", day: 2, start: 8 * 60 + 29, end: 17 * 60 + 44 },
     { who: "dillinger", tty: "console", from: "", day: 2, start: 7 * 60 + 2, end: 19 * 60 + 30 },
-    { who: "flynn", tty: "ttyd0", from: "dialup", day: 2, start: 2 * 60 + 10, end: 2 * 60 + 58 },
-    { who: "flynn", tty: "ttyd0", from: "dialup", day: 1, start: 23 * 60 + 15, end: 23 * 60 + 20 },
+    { who: "kurt1", tty: "ttyd0", from: "dialup", day: 2, start: 2 * 60 + 10, end: 2 * 60 + 58 },
+    { who: "lou1", tty: "ttyd0", from: "dialup", day: 1, start: 23 * 60 + 15, end: 23 * 60 + 20 },
     { who: "lora", tty: "tty3", from: "laser bay", day: 1, start: 8 * 60 + 31, end: 19 * 60 + 6 },
     { who: "alan1", tty: "tty7", from: "", day: 1, start: 8 * 60 + 30, end: 18 * 60 + 2 },
     { who: "dillinger", tty: "console", from: "", day: 1, start: 6 * 60 + 58, end: 20 * 60 + 15 },
     { who: "gibbs", tty: "tty2", from: "", day: 0, start: 12 * 60 + 20, end: 16 * 60 + 5 },
   ];
 
+  // what ps aux shows; the evening's staff add their own
+  const PROCESSES = [
+    { user: "mcp", pid: 1, tty: "?", time: "9999:59", cmd: "mcp" },
+    { user: "dillinger", pid: 96, tty: "console", time: "0:04", cmd: "sh" },
+    { user: "lora", pid: 118, tty: "tty3", time: "0:12", cmd: "vi /lab/laser/log.0922" },
+    { user: "sam1", pid: 187, tty: "ttyd0", time: "0:01", cmd: "sh" },
+    { user: "alan1", pid: 211, tty: "tty7", time: "0:00", cmd: "sh" },
+  ];
+
+  // legitimate dial-ins, for /usr/adm/messages
+  const DIALINS = [];
+
   const STAFF_HOMES = {};
   {
+    const generated = [];
     const taken = new Set(Object.keys(USERS));
     const names = new Set(Object.values(USERS).map((u) => u.full));
     const counts = { alan: 1 };
@@ -275,6 +289,7 @@
       counts[base] = (counts[base] || 0) + 1;
       const name = base + counts[base];
       taken.add(name);
+      generated.push(name);
       let phone;
       do phone = between(4000, 4999); while (phones.has(phone));
       phones.add(phone);
@@ -308,7 +323,56 @@
       const plan = planned.get(person);
       STAFF_HOMES[name] = dir(name, "encom", mode, mtime, plan ? { ".plan": file(name, "encom", "rw-r--r--", mtime, [plan]) } : {});
     });
+
+    // Flynn's way back in: three accounts he made the night before he was
+    // fired, before his access was taken away. They're the last uids in the
+    // file, one after another, with his old extension and one password.
+    // He takes turns with them on ttyd0.
+    [["sam1", "Sam Ostrander", "sMMRmDSQUg.Yk"], ["lou1", "Lou Clement", "L1RVqiR9NXgHU"], ["kurt1", "Kurt Wexler", "kUchfwBOdAzJM"]]
+      .forEach(([name, full, hash], i) => {
+        USERS[name] = { hash, uid: uid + 1 + i, gid: 100, full, dept: "Software", phone: 4440, home: `/home/${name}`, access: SUSPENDED };
+        groupByName("group7").members.push(name);
+        STAFF_HOMES[name] = dir(name, "encom", "rwx------", `Jun 03 23:${50 + i * 2}`, {});
+      });
+
+    // this evening: people working late at the hardwired terminals, and a
+    // few dialed in from home
+    const hardwired = ["tty0", "tty1", "tty2", "tty4", "tty5", "tty6", "tty8", "tty9", "ttya", "ttyb", "ttyc", "ttye", "ttyf", "ttyg", "ttyh", "ttyi", "ttyj", "ttyk"];
+    const commands = ["sh", "sh", "sh", "sh", "vi notes", "mail", "cc -O disc.c", "nroff -ms memo", "ed report", "more /etc/motd"];
+    const pids = new Set(PROCESSES.map((p) => p.pid).concat(240));
+    shuffle(generated.slice()).slice(0, hardwired.length + 3).forEach((name, i) => {
+      for (let j = LOGINS.length - 1; j >= 0; j--) if (LOGINS[j].who === name && LOGINS[j].day === 3) LOGINS.splice(j, 1);
+      const dialup = i >= hardwired.length;
+      const tty = dialup ? `ttyd${i - hardwired.length + 1}` : hardwired[i];
+      const start = dialup ? between(17 * 60 + 30, 18 * 60 + 30) : between(13 * 60, 18 * 60 + 20);
+      LOGINS.push({ who: name, tty, from: dialup ? "dialup" : "", day: 3, start, end: null });
+      if (dialup) DIALINS.push({ who: name, tty, day: 3, start });
+      let pid;
+      do pid = between(120, 239); while (pids.has(pid));
+      pids.add(pid);
+      PROCESSES.push({ user: name, pid, tty, time: `0:${two(between(0, 40))}`, cmd: pick(commands) });
+    });
+
+    // and other nights' dial-ins, so ttyd0 isn't the only one
+    for (let i = 0; i < 8; i++) {
+      const who = pick(generated);
+      const day = between(0, 2);
+      const start = between(19 * 60, 22 * 60 + 30);
+      const tty = pick(["ttyd1", "ttyd2", "ttyd3"]);
+      LOGINS.push({ who, tty, from: "dialup", day, start, end: start + between(10, 90) });
+      DIALINS.push({ who, tty, day, start });
+    }
+
+    // query's line, from each one's latest login
+    for (const [name, u] of Object.entries(USERS)) {
+      const latest = LOGINS.filter((l) => l.who === name).sort((a, b) => b.day - a.day || b.start - a.start)[0];
+      if (!latest) continue;
+      const where = `${DAYS[latest.day]} ${hhmm(latest.start)} on ${latest.tty}${latest.from ? ` (${latest.from})` : ""}`;
+      u.since = latest.end === null ? `On since ${where}` : `Last login ${where}`;
+    }
   }
+
+  const online = (name) => LOGINS.some((l) => l.who === name && l.end === null);
 
   // the groups that count for a user: the login group, then the others
   // they're in that aren't suspended
@@ -463,7 +527,7 @@
       null: dev("root", "root", "rw-rw-rw-", 3, 2),
       tty3: dev("lora", "encom", "rw--w----", 1, 3),
       tty7: dev("alan1", "encom", "rw--w----", 1, 7),
-      ttyd0: dev("flynn", "group7", "rw--w----", 2, 0),
+      ttyd0: dev("sam1", "encom", "rw--w----", 2, 0),
     }),
     etc: dir("root", "root", "rwxr-xr-x", "Sep 22 06:52", {
       group: file("root", "root", "rw-r--r--", "Sep 22 06:52", groupFile),
@@ -549,7 +613,7 @@
     mcp: dir("mcp", "mcp", "rwx------", "Sep 22 18:32", {}, { guarded: true }),
     // CLU's last moments, left behind
     tmp: dir("root", "root", "rwxrwxrwt", "Sep 21 23:46", {
-      core: file("flynn", "group7", "rw-r--r--", "Sep 21 23:46", ["ÿÿ§ CLU ¶ääÐ ÿ FIND ¶ äää DEREZÿÿ"], {
+      core: file("lou1", "encom", "rw-r--r--", "Sep 21 23:46", ["ÿÿ§ CLU ¶ääÐ ÿ FIND ¶ äää DEREZÿÿ"], {
         binary: true,
         kind: "core file from 'clu'",
         strings: [
@@ -569,21 +633,22 @@
     usr: dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", {
       adm: dir("root", "root", "rwxr-xr-x", "Sep 22 18:11", {
         messages: file("root", "root", "rw-r--r--", "Sep 22 18:11", [
-          "Sep 20 23:15:40 encom login: DIALUP ttyd0, flynn",
+          "Sep 20 23:15:40 encom login: DIALUP ttyd0, lou1",
           "Sep 20 23:20:02 encom mcp: ttyd0 disconnected",
-          "Sep 21 02:10:44 encom login: DIALUP ttyd0, flynn",
+          "Sep 21 02:10:44 encom login: DIALUP ttyd0, kurt1",
           "Sep 21 02:58:03 encom mcp: ttyd0: search of /usr/games refused",
-          "Sep 21 23:41:12 encom login: DIALUP ttyd0, flynn",
+          "Sep 21 23:41:12 encom login: DIALUP ttyd0, lou1",
           "Sep 21 23:44:30 encom mcp: unauthorized program clu in sector 7, user unknown",
           "Sep 21 23:46:02 encom mcp: clu derezzed; core dumped",
           "Sep 22 06:52:15 encom mcp: dillinger: all group7 access suspended",
           "Sep 22 06:52:16 encom mcp: group7 projects frozen: tron (alan1)",
           "Sep 22 17:58:00 encom mcp: /home/alan1/projects/tron/tron.addr reclaimed",
           "Sep 22 17:58:40 encom mcp: laser0: experiment schedule requested",
-          "Sep 22 18:11:09 encom login: DIALUP ttyd0, flynn",
+          "Sep 22 18:11:09 encom login: DIALUP ttyd0, sam1",
           "Sep 22 18:11:10 encom mcp: ttyd0 watched",
-        ], { hang: 22 }),
-        wtmp: file("root", "root", "rw-r--r--", "Sep 22 18:11", ["¶tty7ääalan1ÿÿ¶ttyd0ääflynnÿÿ¶consoleädillingerÿ"], { binary: true, kind: "data" }),
+        ].concat(DIALINS.map(({ who, tty, day, start }) =>
+          `Sep ${DAYS[day].slice(-2)} ${hhmm(start)}:${two(between(0, 59))} encom login: DIALUP ${tty}, ${who}`)).sort(), { hang: 22 }),
+        wtmp: file("root", "root", "rw-r--r--", "Sep 22 18:11", ["¶tty7ääalan1ÿÿ¶ttyd0ääsam1ÿÿ¶consoleädillingerÿ"], { binary: true, kind: "data" }),
       }),
       encom: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", {
         bin: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", programs("ENCOM", "encom", "Aug 02 15:30")),
@@ -1298,13 +1363,12 @@
       if (name === "root" || name === "mcp" || name === "dillinger") return suspect(t);
     },
 
+    // everyone still logged in, by terminal
     who(t) {
-      t.print(
-        "alan1     tty7     Sep 22 08:31",
-        "lora      tty3     Sep 22 07:52   (laser bay)",
-        "dillinger console  Sep 22 06:45",
-        "flynn     ttyd0    Sep 22 18:11   (dialup)",
-      );
+      t.print(...LOGINS
+        .filter((l) => l.end === null)
+        .sort((a, b) => (a.tty < b.tty ? -1 : 1))
+        .map((l) => `${l.who.padEnd(9)} ${l.tty.padEnd(8)} Sep 22 ${hhmm(l.start)}${l.from ? `   (${l.from})` : ""}`));
     },
 
     last(t, [name]) {
@@ -1353,14 +1417,21 @@
         return suspect(t);
       }
       if (name === "dillinger") return t.print("[Your party is refusing messages]");
-      if (name === "flynn") {
+      // Flynn, on a noisy line from the arcade
+      if (name === "sam1") {
         t.print("[Waiting for your party to respond]");
         await sleep(1400);
         return t.print("~#%@&!~  NO CARRIER");
       }
       if (name === "alan1") return t.print("talk: you can't talk to yourself");
-      if (name === "gibbs") return t.print("[Your party is not logged on]");
-      t.print(`talk: ${name}: no such user`);
+      if (!Object.hasOwn(USERS, name)) return t.print(`talk: ${name}: no such user`);
+      if (!online(name)) return t.print("[Your party is not logged on]");
+      // everyone else is busy
+      t.print("[Waiting for your party to respond]");
+      await sleep(1600);
+      t.print("[Ringing your party again]");
+      await sleep(1600);
+      t.print("[Your party is not responding]");
     },
 
     // plain ps is Alan's (and the MCP, which is everywhere); ps aux,
@@ -1368,14 +1439,12 @@
     ps(t, args, line) {
       const flags = args.join("").replace(/-/g, "");
       if (/[aex]/.test(flags)) {
+        const row = (p) => `${p.user.padEnd(9)}${String(p.pid).padStart(5)} ${p.tty.padEnd(7)}${p.time.padStart(6)} ${p.cmd}`;
         return t.print(
           "USER       PID TTY      TIME COMMAND",
-          "mcp          1 ?     9999:59 mcp",
-          "dillinger   96 console  0:04 sh",
-          "lora       118 tty3     0:12 vi /lab/laser/log.0922",
-          "flynn      187 ttyd0    0:01 sh",
-          "alan1      211 tty7     0:00 sh",
-          `alan1      240 tty7     0:00 ${line}`,
+          ...[...PROCESSES, { user: "alan1", pid: 240, tty: "tty7", time: "0:00", cmd: line }]
+            .sort((a, b) => a.pid - b.pid)
+            .map(row),
         );
       }
       t.print(
@@ -1395,7 +1464,8 @@
         return suspect(t, hard ? 2 : 1);
       }
       if (pid === "211") return logout(t);
-      if (pid === "96" || pid === "118" || pid === "187") {
+      // everyone else's processes are theirs
+      if (PROCESSES.some((p) => String(p.pid) === pid)) {
         t.print(`kill: ${pid}: Operation not permitted`);
         if (pid !== "118") return;
         return (async () => {
@@ -1454,7 +1524,7 @@
       const m = Math.floor((up % 3600000) / 60000);
       const hour = d.getUTCHours();
       const clock = `${hour % 12 || 12}:${two(d.getUTCMinutes())}${hour < 12 ? "am" : "pm"}`;
-      t.print(`${clock.padStart(8)}  up ${days} days, ${String(h).padStart(2)}:${two(m)},  4 users,  load average: 4.12, 3.98, 3.75`);
+      t.print(`${clock.padStart(8)}  up ${days} days, ${String(h).padStart(2)}:${two(m)},  ${LOGINS.filter((l) => l.end === null).length} users,  load average: 4.12, 3.98, 3.75`);
     },
 
     uname(t, args) {
