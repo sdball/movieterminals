@@ -1734,8 +1734,22 @@
     const found = find(`${PROJECT}/tron.addr`);
     if (!found.node || found.node.type !== "file") return t.print("ADDRESS FILE NOT FOUND", "TRON PROGRAM UNAVAILABLE");
     if (!can(found.node, "r")) return t.print("ADDRESS FILE UNREADABLE", "TRON PROGRAM UNAVAILABLE");
-    const addresses = found.node.lines.filter((line) => /^[A-Z]{2} \d{6}\b/.test(line));
+    // one address a line, "XX NNNNNN  NAME" as NOTES has it; # comments and
+    // blank lines don't count. Anything else stops Tron, NOTES's own
+    // placeholder included.
+    const addresses = found.node.lines
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter(({ line }) => line && !line.startsWith("#"));
     if (!addresses.length) return t.print("ADDRESS FILE EMPTY", "TRON PROGRAM UNAVAILABLE");
+    const invalid = addresses.filter(({ line }) => !/^[A-Z]{2} \d{6}\s+\S/.test(line));
+    if (invalid.length) {
+      return t.print(
+        "ADDRESS FILE INVALID",
+        ...invalid.slice(0, 3).map(({ line, n }) => `  LINE ${n}: ${line}`),
+        ...(invalid.length > 3 ? [`  AND ${invalid.length - 3} MORE`] : []),
+        "TRON PROGRAM UNAVAILABLE",
+      );
+    }
 
     await t.type([`LOADING ADDRESS FILE... ${addresses.length} ADDRESS${addresses.length === 1 ? "" : "ES"}`], { by: "line" });
     await sleep(900);
