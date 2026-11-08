@@ -5,12 +5,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>SETEC ASTRONOMY · Sneakers | Movie Terminals</title>
-  <meta name="description" content="Probe Janek's black box from Sneakers (1992) with the team, and find the contact that makes it talk.">
+  <meta name="description" content="Probe Janek's black box from Sneakers (1992) with the team, find the contact that makes it talk, and dial into the places nobody can get into.">
   <meta name="theme-color" content="#05060a">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Sans:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Sans:wght@400;600&family=Caveat:wght@500;700&display=swap">
   <link rel="stylesheet" href="../assets/css/terminal.css">
   <link rel="stylesheet" href="../assets/css/sneakers.css">
   <script src="../assets/js/terminal.js" defer></script>
@@ -36,7 +36,7 @@
             <div class="prompt-lead"></div>
             <label class="prompt-line"><span class="prompt"></span><span class="field"><input id="command" type="text"
                   aria-label="Command" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
-                  enterkeyhint="send"><span id="cursor" aria-hidden="true"></span></span></label>
+                  enterkeyhint="send"><span id="cursor" aria-hidden="true"></span></span><span class="prompt-tail" aria-hidden="true"></span></label>
           </form>
         </div>
         <footer id="keys">
@@ -176,6 +176,11 @@
       </svg>
 
       <div id="tiles" role="img" aria-label="Letter tiles"></div>
+
+      <section id="book" aria-label="Carl's little black book. A number dials it." hidden>
+        <div class="page"></div>
+        <div class="page"></div>
+      </section>
 
       <div id="captions" role="log" aria-live="polite" aria-label="The team"></div>
     </aside>

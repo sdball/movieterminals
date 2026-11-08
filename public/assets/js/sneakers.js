@@ -15,11 +15,21 @@
   it to the next pin and Whistler wants it back; stay on it and the box is
   live. Which side, and where on it, is settled by the first pin you touch:
   the side opposite, so you go through two others on the way, either way
-  around. Act 2, Carl's black book and dialing out, comes next.
+  around.
+
+  Act 2: once the box talks, Carl's little black book opens under it.
+  Dial a number from it (click it, or type it, bare or as ATDT 7035550142)
+  and the monitor connects to the far end's screen, encrypted. Put the
+  probe back on the decryption pin and the screen churns into the clear:
+  the Federal Reserve's transfer node, the New England power grid, Bay
+  Area air traffic control, each as the film shows it. The team won't let
+  you touch anything. Hang up on air traffic control (Escape, ATH, "turn
+  it off") and the scene ends.
 
   window.term is the terminal, and window.bench the box:
-  bench.touch(n) puts the probe on pin n, and bench.decryption is the pin
-  once it's been placed.
+  bench.touch(n) puts the probe on pin n, bench.decryption is the pin
+  once it's been placed, bench.live() skips ahead to the box talking, and
+  bench.link is the call in progress.
 */
 
 (function () {
@@ -48,12 +58,16 @@
     sawMagic: false,    // went from the decryption pin to another
     live: false,        // the box is talking
     said: new Set(),    // one-time lines already said
+    cracked: new Set(), // the places decrypted so far: fed, grid, atc
   };
 
   // ---------- The team ----------
   // Captions under the box, one at a time. say() queues lines (and pauses,
   // and things to do between them); chat() is for asides that can be
-  // dropped when the team is already talking.
+  // dropped when the team is already talking. A line is [who, text], and
+  // its text can be an array of strings and nodes. A function in the queue
+  // runs when its turn comes, and if it returns a line, that's said: a line
+  // that only makes sense if things haven't moved on.
 
   const captions = document.getElementById("captions");
   let queue = Promise.resolve();
@@ -61,8 +75,14 @@
 
   function caption(who, text) {
     for (const old of captions.querySelectorAll("p:not(.old)")) old.classList.add("old");
-    captions.append(el("p", null, el("span", { class: "who" }, who), text));
+    captions.append(el("p", null, el("span", { class: "who" }, who), el("span", null, text)));
     while (captions.children.length > 5) captions.firstElementChild.remove();
+  }
+
+  async function speak([who, text]) {
+    caption(who, text);
+    const length = [text].flat().reduce((sum, part) => sum + (part.textContent ?? part).length, 0);
+    await sleep(900 + length * 40);
   }
 
   function say(...items) {
@@ -70,12 +90,10 @@
     queue = queue.then(async () => {
       for (const item of items) {
         if (typeof item === "number") await sleep(item);
-        else if (typeof item === "function") await item();
-        else {
-          const [who, text] = item;
-          caption(who, text);
-          await sleep(900 + text.length * 40);
-        }
+        else if (typeof item === "function") {
+          const line = await item();
+          if (Array.isArray(line)) await speak(line);
+        } else await speak(item);
       }
     }).finally(() => queued--);
     return queue;
@@ -416,9 +434,11 @@
 
   function landed(pin, before) {
     if (!keyQuad) wire(pin.quad);
-    status.textContent = `PIN ${String(pin.n).padStart(2, "0")}  QUAD ${pin.quad}`;
+    showStatus();
     const bytes = reading(pin);
     setLights(lightsFor(pin, bytes), pin.kind === "magic");
+    // on a call, the screen is the far end's
+    if (link || dialing) return onTheLine(pin);
     if (pin.kind === "magic") startNoise();
     else showRows(pin, bytes);
     story.probes++;
@@ -458,11 +478,15 @@
     if (story.sinceKeys >= 8) once("middle", ["WHISTLER", "Somewhere in the middle of that row, Mother."]);
   }
 
-  function lifted(pin) {
-    status.textContent = "NO CONTACT";
+  function lifted() {
+    showStatus();
     setLights([]);
     clearTimeout(dwell);
     cancelAnimationFrame(noise);
+  }
+
+  function showStatus() {
+    status.textContent = contact ? `PIN ${String(contact.n).padStart(2, "0")}  QUAD ${contact.quad}` : "NO CONTACT";
   }
 
   const FIRST_READ = {
@@ -476,27 +500,47 @@
     sync: "That's a pulse.",
   };
 
-  // move the probe to a pin, gliding there unless motion is reduced
-  let glide = 0;
-  function goTo(pin) {
-    cancelAnimationFrame(glide);
-    if (contact && contact !== pin) touch(null);
+  // move the probe, gliding unless motion is reduced; the promise says
+  // whether it got there (another move, or a drag, can cut it short)
+  let gliding = 0;
+  let settle = null;
+
+  function stopGlide() {
+    cancelAnimationFrame(gliding);
+    settle?.(false);
+    settle = null;
+  }
+
+  function glide(x, y) {
+    stopGlide();
     const from = { ...tip };
     const ms = reduceMotion.matches ? 0 : 200;
     const start = performance.now();
     return new Promise((resolve) => {
+      settle = resolve;
       const stepFrame = (now) => {
         const k = ms ? Math.min(1, (now - start) / ms) : 1;
         const ease = 1 - (1 - k) ** 3;
-        draw(from.x + (pin.cx - from.x) * ease, from.y + (pin.cy - from.y) * ease);
-        if (k < 1) glide = requestAnimationFrame(stepFrame);
+        draw(from.x + (x - from.x) * ease, from.y + (y - from.y) * ease);
+        if (k < 1) gliding = requestAnimationFrame(stepFrame);
         else {
-          touch(pin);
-          resolve();
+          settle = null;
+          resolve(true);
         }
       };
-      glide = requestAnimationFrame(stepFrame);
+      gliding = requestAnimationFrame(stepFrame);
     });
+  }
+
+  function goTo(pin) {
+    if (contact && contact !== pin) touch(null);
+    return glide(pin.cx, pin.cy).then((arrived) => { if (arrived) touch(pin); });
+  }
+
+  // set the probe down on the table
+  function putDown() {
+    touch(null);
+    return glide(HOME.x, HOME.y);
   }
 
   const pinAt = (n) => PINS[((n - 1) % 48 + 48) % 48];
@@ -513,7 +557,7 @@
   probe.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    cancelAnimationFrame(glide);
+    stopGlide();
     const p = toBoard(e);
     drag = { dx: p.x - tip.x, dy: p.y - tip.y };
     probe.setPointerCapture(e.pointerId);
@@ -576,6 +620,10 @@
     if (story.live) return;
     story.live = true;
     board.classList.add("live");
+    // a dab of paint off the end of the pin, so Mother won't lose it again
+    const magic = PINS.find((pin) => pin.kind === "magic");
+    const [dx, dy] = { 1: [-9, 0], 2: [0, 9], 3: [9, 0], 4: [0, -9] }[magic.quad];
+    magic.node.append(svg("circle", { class: "dab", cx: magic.cx + dx, cy: magic.cy + dy, r: 3 }));
     say(
       ["WHISTLER", "Holy cow."],
       ["WHISTLER", "What the hell is this?"],
@@ -585,6 +633,15 @@
       () => { document.title = "TOO MANY SECRETS · Sneakers | Movie Terminals"; },
       ["BISHOP", "Too many secrets."],
       ["WHISTLER", "Bish, I think you better come over here."],
+      800,
+      ["BISHOP", "Carl, you got your little black book?"],
+      ["CARL", "Yes."],
+      () => openBook(),
+      ["BISHOP", "Give me the number for something impossible to access."],
+      () => point("fed"),
+      ["CARL", "Okay. What about this? Federal Reserve Transfer Node, Culpeper, Virginia."],
+      ["MOTHER", "Yeah, sure. Good luck. Nine hundred billion a day goes through there."],
+      ["BISHOP", "That'll do. Punch it in."],
     );
   }
 
@@ -607,6 +664,757 @@
     );
   }
 
+  // ---------- Act 2: Carl's little black book ----------
+  // Two pages, a name and a number each. Every number is fictional
+  // (555-01xx), with 1992's area codes: Culpeper was 703 until 1995, and
+  // Oakland, where the Bay Area's approach control sat, 510 since 1991.
+
+  const BOOK = [
+    { id: "fed", page: 0, name: "Fed Reserve transfer node", note: "Culpeper VA", number: "703-555-0142" },
+    { id: "pizza", page: 0, name: "Gino's Pizza", note: "open til 2", number: "415-555-0117" },
+    { id: "grid", page: 0, name: "Nat'l power grid", note: "DOE", number: "202-555-0128" },
+    { id: "mom", page: 1, name: "Mom", note: "call Sun!", number: "415-555-0163" },
+    { id: "atc", page: 1, name: "Air traffic control", note: "Bay TRACON", number: "510-555-0174" },
+    { id: "bbs", page: 1, name: "Cheshire Cat BBS", note: "2400 8N1", number: "415-555-0189" },
+  ];
+  const digitsOf = (text) => text.replace(/\D/g, "");
+
+  const book = document.getElementById("book");
+  const form = document.getElementById("inputline");
+  let running = false; // a number from the book is being typed in
+
+  for (const [i, page] of [...book.querySelectorAll(".page")].entries()) {
+    for (const entry of BOOK.filter((e) => e.page === i)) {
+      entry.node = el("button", { type: "button", class: "entry", "aria-label": `${entry.name}, ${entry.note}: ${entry.number}` },
+        el("span", { class: "name" }, entry.name),
+        el("span", { class: "number" }, entry.number, el("span", { class: "note" }, entry.note)));
+      entry.node.addEventListener("click", () => dialFromBook(entry));
+      page.append(entry.node);
+    }
+  }
+
+  function openBook() {
+    book.hidden = false;
+  }
+
+  // Carl's finger on an entry
+  function point(id) {
+    for (const entry of BOOK) entry.node.classList.toggle("pointed", entry.id === id);
+  }
+
+  // a click on a number types it in, if the command line is free
+  function dialFromBook(entry) {
+    if (running || form.classList.contains("waiting") || form.classList.contains("held")) return;
+    running = true;
+    t.run(`ATDT ${digitsOf(entry.number)}`).finally(() => (running = false));
+  }
+
+  // ---------- The modem ----------
+  // ATDT and the number (or just the number) dials; ATH, +++, Escape, or
+  // the far end's own way out hangs up.
+
+  const monitor = document.getElementById("monitor");
+  const DIALED = /^(?:atd[tp]?|dial|call)?\s*([\d\s()+-]+)$/;
+  const HANG_UP = new Set(["ath", "ath0", "+++", "hang up", "hangup", "esc", "escape", "exit", "quit", "bye", "logoff", "disconnect", "turn it off", "off"]);
+
+  let link = null;     // the call: { target, ready, decoding, decoded, ... }
+  let dialing = false; // between ATDT and CONNECT
+
+  function dialed(line) {
+    const match = DIALED.exec(line);
+    const digits = match && digitsOf(match[1]);
+    return digits && digits.length >= 7 ? digits : null;
+  }
+
+  // the book's entry for a number: all ten digits, with a 1 first, or the
+  // last seven
+  function lookUp(digits) {
+    return BOOK.find((entry) => {
+      const number = digitsOf(entry.number);
+      return digits === number || digits === `1${number}` || digits === number.slice(3);
+    });
+  }
+
+  async function dial(t, digits) {
+    if (link) hangUp(t, false);
+    stopOutput();
+    t.clear();
+    t.print(`ATDT${digits}`);
+    if (!story.live) {
+      await t.sleep(400);
+      t.print("NO DIALTONE", "");
+      return;
+    }
+    const entry = lookUp(digits);
+    dialing = true;
+    putDown();
+    try {
+      status.textContent = "DIALING";
+      await t.sleep(500 + digits.length * 110);
+      if (!entry && Math.random() < 0.3) {
+        t.print("BUSY", "");
+        return;
+      }
+      status.textContent = "RINGING";
+      const rings = entry ? { voice: 2, bbs: 1 }[KINDS[entry.id]] ?? 1 : 4;
+      for (let ring = 0; ring < rings; ring++) {
+        t.print("RINGING");
+        await t.sleep(1300);
+      }
+      const kind = entry && KINDS[entry.id];
+      if (kind === "voice" || !entry) {
+        t.print("NO CARRIER", "");
+        if (entry) once(entry.id, ...ANSWERED[entry.id]);
+        else once("wrong number", ["CARL", "Wrong number. Not mine."]);
+        return;
+      }
+      t.print("CONNECT 2400");
+      await t.sleep(600);
+      if (kind === "bbs") return await bbs(t);
+      await connect(t, TARGETS[entry.id]);
+    } finally {
+      dialing = false;
+      if (!link) showStatus();
+    }
+  }
+
+  const KINDS = { fed: "target", grid: "target", atc: "target", pizza: "voice", mom: "voice", bbs: "bbs" };
+  const ANSWERED = {
+    pizza: [["CARL", "That's the pizza place."], ["MOTHER", "Get a large. Pepperoni."]],
+    mom: [["CARL", "Oh, no. That was my mom."], ["MOTHER", "Call her back, Carl. Sunday."]],
+  };
+
+  // Carl's bulletin board: no encryption, and no free lines
+  async function bbs(t) {
+    await t.type([
+      "",
+      "      C H E S H I R E   C A T   B B S",
+      "      Node 2 of 2     2400 baud     est. 1988",
+      "",
+      "  All nodes are busy. Please call back later.",
+      "",
+    ], { by: "line", lineDelay: 160 });
+    await t.sleep(500);
+    t.print("NO CARRIER", "");
+    once("bbs", ["WHISTLER", "A bulletin board, Carl?"], ["CARL", "It's not even encrypted. Sorry."]);
+  }
+
+  // the far end answers: its screen takes over the monitor, encrypted
+  async function connect(t, target) {
+    const call = (link = { target, ready: false, decoding: false, decoded: false });
+    monitor.dataset.remote = target.id;
+    t.setPrompt("");
+    t.clear();
+    status.textContent = "CONNECT 2400";
+    await (target.id === "fed" ? fedCipher(t) : streamCipher(t, call));
+    if (link !== call) return;
+    call.ready = true;
+    target.connected();
+    // if nobody's on that last contact in a while, Whistler says so
+    call.nudge = setTimeout(() => {
+      if (link === call && !call.decoding) once(`${target.id} nudge`, ["WHISTLER", "That last contact, Mother."]);
+    }, 9000);
+    if (contact?.kind === "magic") decode();
+  }
+
+  function hangUp(t, carrier = true) {
+    const call = link;
+    if (!call) {
+      t.print("OK");
+      return true;
+    }
+    link = null;
+    clearTimeout(call.nudge);
+    clearInterval(call.sweep);
+    bracket(false);
+    delete monitor.dataset.remote;
+    t.setPrompt("> ");
+    t.clear();
+    if (carrier) t.print("NO CARRIER", "");
+    showStatus();
+    if (call.target.id === "atc" && call.decoded) ending();
+    return true;
+  }
+
+  // the probe while on a call: that last contact decrypts, the rest don't
+  function onTheLine(pin) {
+    if (!link?.ready) return;
+    if (pin.kind === "magic") return decode();
+    if (!link.decoded && !link.decoding) once(`${link.target.id} wrong`, ["WHISTLER", "No. The last contact, Mother."]);
+  }
+
+  // ---------- The churn ----------
+  // The film's decryption: each character cycles through junk until its
+  // own moment, all across the screen at once, then locks into place.
+
+  const CIPHER = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥ƒáíóúñÑªº¿¬½¼¡«»";
+  const GLYPHS = CIPHER + "░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■";
+  const pick = (chars) => chars[rand(chars.length)];
+  const CHURN_MS = 4000;
+
+  // a line as cells, one per character but the spaces; final(ch) is what
+  // each settles on
+  function cellsOf(text, cells, final) {
+    const p = el("p");
+    for (const part of text.split(/( +)/)) {
+      if (!part) continue;
+      if (part[0] === " ") p.append(part);
+      else for (const ch of part) {
+        const node = el("span", { class: "cell" }, ch);
+        p.append(node);
+        cells.push({ node, ch: final(ch) });
+      }
+    }
+    if (!text) p.append(" ");
+    return p;
+  }
+
+  // Any key or click skips to the end, as with the engine's output, and
+  // with reduced motion there's no churn at all. alive() says whether the
+  // call's still up; onProgress gets 0 to 1.
+  function churn(cells, alive, onProgress) {
+    return new Promise((resolve) => {
+      for (const cell of cells) Object.assign(cell, { at: 150 + Math.random() * (CHURN_MS - 150), next: 0, done: false });
+      let skip = reduceMotion.matches;
+      const skipIt = (e) => { if (!["Shift", "Control", "Alt", "Meta"].includes(e.key)) skip = true; };
+      addEventListener("keydown", skipIt, true);
+      addEventListener("pointerdown", skipIt, true);
+      const start = performance.now();
+      const frame = (now) => {
+        const elapsed = now - start;
+        const over = skip || elapsed >= CHURN_MS || !alive();
+        for (const cell of cells) {
+          if (cell.done) continue;
+          if (over || elapsed >= cell.at) {
+            cell.node.textContent = cell.ch;
+            cell.node.classList.add("locked");
+            cell.done = true;
+          } else if (now >= cell.next) {
+            cell.node.textContent = pick(GLYPHS);
+            cell.next = now + 40 + Math.random() * 120;
+          }
+        }
+        onProgress?.(over ? 1 : elapsed / CHURN_MS);
+        if (!over) return void requestAnimationFrame(frame);
+        removeEventListener("keydown", skipIt, true);
+        removeEventListener("pointerdown", skipIt, true);
+        resolve();
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // put the probe on that last contact during a call
+  async function decode() {
+    const call = link;
+    if (!call?.ready || call.decoding || call.decoded) return;
+    call.decoding = true;
+    clearTimeout(call.nudge);
+    call.target.decoding?.();
+    await (call.target.id === "fed" ? decodeFed(call) : decodeArt(call));
+    if (link !== call) return;
+    call.decoded = true;
+    story.cracked.add(call.target.id);
+    call.target.decoded(call);
+  }
+
+  // ---------- The Federal Reserve ----------
+  // Pale green ciphertext, then the film's text screen, 80 columns across,
+  // whose last line becomes the command line: [ ] Select Option.
+
+  const pad = (n) => " ".repeat(n);
+  const FED = [
+    `DATANET PROC RECORD:  45-3456-W-3452${pad(28)}Transnet on/xc-3`,
+    "",
+    `${pad(25)}FEDERAL RESERVE TRANSFER NODE`,
+    "",
+    `${pad(29)}National Headquarters`,
+    "",
+    `${pad(6)}************  Remote Systems Network Input Station    ************`,
+    `${pad(6)}${"=".repeat(66)}`,
+    "",
+    `${pad(9)}[1] Interbank Funds Transfer  (Code Prog: 485-GWU)`,
+    `${pad(9)}[2] International Telelink Access  (Code Lim: XRP-262)`,
+    `${pad(9)}[3] Remote Facsimile Send/Receive  (Code Tran:  2LZP-517)`,
+    `${pad(9)}[4] Regional Bank Interconnect  (Security Code:  47-B34)`,
+    `${pad(9)}[5] Update System Parameters  (Entry Auth. Req.)`,
+    `${pad(9)}[6] Remote Operator Logon/Logoff`,
+    "",
+    `${pad(6)}${"=".repeat(66)}`,
+    "",
+    `${pad(22)}[ ] Select Option or ESC to Abort`,
+  ];
+  const SELECT = FED.at(-1).indexOf("[");
+
+  // runs of junk, the shape of a screen, as the film shows it before the decode
+  async function fedCipher(t) {
+    const shape = [[0, 34, 30, 14], [0, 26], [], [14, 22], [], [0, 58], [2, 61], [0, 55], [0, 63], [3, 52], [0, 60], [0, 44], [], [8, 48], [], [20, 30]];
+    const junk = (n) => Array.from({ length: n }, () => (rand(7) ? pick(CIPHER) : " ")).join("");
+    const lines = shape.map(([at, length, gap, more]) =>
+      at == null ? "" : el("p", { class: "cipher" }, pad(at) + junk(length) + (gap ? pad(gap) + junk(more) : "")));
+    await t.type(lines, { by: "line", lineDelay: 90 });
+  }
+
+  async function decodeFed(call) {
+    t.hold(); // the command line comes back as the screen's last line
+    t.clear();
+    const cells = [];
+    const lines = FED.map((line) => cellsOf(line, cells, (ch) => ch));
+    for (const cell of cells) cell.node.textContent = "";
+    t.print(...lines);
+    await churn(cells, () => link === call);
+    if (link === call) {
+      lines.at(-1).remove();
+      bracket(true);
+    }
+    t.release();
+  }
+
+  // the command line inside the brackets, growing with what's typed
+  const field = form.querySelector(".field");
+  const tail = form.querySelector(".prompt-tail");
+  const command = document.getElementById("command");
+  let fitting = 0;
+
+  function bracket(on) {
+    cancelAnimationFrame(fitting);
+    if (on) {
+      monitor.dataset.bracket = "";
+      t.setPrompt(pad(SELECT) + "[");
+      tail.textContent = FED.at(-1).slice(SELECT + 2);
+      const fit = () => {
+        field.style.setProperty("--chars", command.value.length + 1);
+        fitting = requestAnimationFrame(fit);
+      };
+      fit();
+    } else {
+      delete monitor.dataset.bracket;
+      tail.textContent = "";
+      field.style.removeProperty("--chars");
+    }
+  }
+
+  const FED_CHOICES = {
+    1: ["BISHOP", "Nobody moves any money."],
+    2: ["CARL", "Who are we gonna call, Switzerland?"],
+    3: ["WHISTLER", "Fax them what? Our phone number?"],
+    4: ["CREASE", "That's people's savings, Mother. Leave it."],
+    5: ["BISHOP", "Don't touch the parameters."],
+    6: ["WHISTLER", "Log on and there's a record we were here."],
+  };
+
+  // ---------- The grid and air traffic control ----------
+  // Blue ciphertext streams down the whole screen; on the decode it clears
+  // away, a character at a time, as the picture comes up behind it.
+
+  async function streamCipher(t, call) {
+    const box = el("div", { class: "remote-screen" });
+    const junk = el("div", { class: "junk", "aria-hidden": "true" });
+    box.append(junk);
+    t.print(box);
+    const style = getComputedStyle(monitor);
+    const size = parseFloat(style.fontSize);
+    const cols = Math.max(20, Math.floor(junk.clientWidth / (size * parseFloat(style.getPropertyValue("--advance")))));
+    const count = Math.max(8, Math.floor(junk.clientHeight / (size * parseFloat(style.getPropertyValue("--leading")))));
+    Object.assign(call, { box, junk, rows: [] });
+    for (let i = 0; i < count && link === call; i++) {
+      const row = Array.from({ length: cols }, () => (rand(6) ? pick(CIPHER) : " ")).join("");
+      call.rows.push(row);
+      junk.append(el("p", null, row));
+      await t.sleep(70);
+    }
+  }
+
+  async function decodeArt(call) {
+    const art = call.target.draw(call);
+    art.classList.add("art");
+    art.style.opacity = 0;
+    call.box.prepend(art);
+    const cells = [];
+    call.junk.replaceChildren(...call.rows.map((row) => cellsOf(row, cells, () => " ")));
+    // the picture flickers up as the junk goes
+    await churn(cells, () => link === call, (k) => {
+      art.style.opacity = k >= 1 ? 1 : Math.max(0, Math.min(1, (k - 0.15) / 0.6)) * (0.7 + Math.random() * 0.3);
+    });
+    call.junk.remove();
+  }
+
+  // ---------- Drawing ----------
+
+  // a seeded random, so the drawn screens come out the same every time
+  function seeded(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let r = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // longitude and latitude onto a box, at the right shape for the latitude
+  function projection({ x, y, width, height, west, north, south }) {
+    const tall = north - south;
+    const wide = (tall * width) / height / Math.cos((((north + south) / 2) * Math.PI) / 180);
+    return ([lon, lat]) => [x + ((lon - west) / wide) * width, y + ((north - lat) / tall) * height];
+  }
+
+  const pathOf = (points, project, close = false) =>
+    points.map((point, i) => `${i ? "L" : "M"}${project(point).map((n) => n.toFixed(1)).join(" ")}`).join(" ") + (close ? " Z" : "");
+
+  function label(x, y, text, className, attrs = {}) {
+    const node = svg("text", { x, y, class: className, ...attrs });
+    node.textContent = text;
+    return node;
+  }
+
+  // something on a drawn screen to click (or focus and press Enter)
+  function hot(attrs, act, ...children) {
+    const node = svg("g", { class: "hot", tabindex: "0", role: "button", ...attrs });
+    node.dataset.act = act;
+    node.append(...children);
+    return node;
+  }
+
+  function onAct(art, handle) {
+    art.addEventListener("click", (e) => {
+      const node = e.target.closest("[data-act]");
+      if (node) handle(node.dataset.act, node);
+    });
+    art.addEventListener("keydown", (e) => {
+      const node = e.target.closest?.("[data-act]");
+      if (!node || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      e.stopPropagation(); // keep Space from going to the command line
+      handle(node.dataset.act, node);
+    });
+  }
+
+  // New England, roughly, for the power grid: the coast from New York
+  // around to Maine, Long Island and the islands, two rivers, the states
+  const NEW_ENGLAND = {
+    coast: [[-74.9, 40.4], [-74.0, 40.4], [-74.02, 40.7], [-73.8, 40.82], [-73.68, 40.96], [-73.54, 41.03], [-73.41, 41.08], [-73.18, 41.15], [-72.92, 41.25], [-72.68, 41.27], [-72.36, 41.28], [-72.09, 41.32], [-71.95, 41.33], [-71.86, 41.31], [-71.49, 41.36], [-71.45, 41.45], [-71.43, 41.57], [-71.4, 41.7], [-71.4, 41.82], [-71.36, 41.78], [-71.27, 41.67], [-71.15, 41.7], [-71.2, 41.6], [-71.2, 41.46], [-71.08, 41.5], [-70.92, 41.6], [-70.8, 41.65], [-70.7, 41.75], [-70.62, 41.73], [-70.67, 41.53], [-70.6, 41.55], [-70.28, 41.63], [-70.07, 41.67], [-69.95, 41.67], [-69.93, 41.8], [-69.97, 41.93], [-70.03, 42.02], [-70.15, 42.07], [-70.24, 42.06], [-70.18, 42.03], [-70.08, 41.95], [-70.03, 41.9], [-70.05, 41.77], [-70.2, 41.74], [-70.32, 41.72], [-70.5, 41.77], [-70.62, 41.92], [-70.68, 42.03], [-70.72, 42.2], [-70.8, 42.25], [-70.9, 42.3], [-71.0, 42.27], [-71.05, 42.35], [-70.97, 42.38], [-70.92, 42.43], [-70.87, 42.47], [-70.83, 42.5], [-70.85, 42.55], [-70.66, 42.6], [-70.6, 42.66], [-70.77, 42.7], [-70.8, 42.82], [-70.8, 42.92], [-70.74, 43.0], [-70.73, 43.07], [-70.6, 43.15], [-70.58, 43.25], [-70.45, 43.36], [-70.35, 43.45], [-70.2, 43.56], [-70.24, 43.66], [-70.17, 43.8], [-69.95, 43.85], [-69.82, 43.85], [-69.63, 43.85], [-69.5, 43.84], [-69.35, 43.98], [-69.1, 44.1], [-69.06, 44.2], [-69.0, 44.42], [-68.8, 44.45], [-68.6, 44.4], [-68.3, 44.3], [-68.0, 44.4], [-67.6, 44.5], [-66.9, 44.8]],
+    beyond: [[-66.9, 45.5], [-74.9, 45.5]],
+    islands: [
+      [[-74.0, 40.58], [-73.6, 40.58], [-73.2, 40.63], [-72.8, 40.75], [-72.4, 40.85], [-71.86, 41.07], [-72.1, 41.03], [-72.3, 41.15], [-72.6, 41.0], [-73.0, 40.95], [-73.5, 40.9], [-73.78, 40.8], [-73.95, 40.72]],
+      [[-70.83, 41.35], [-70.6, 41.47], [-70.45, 41.4], [-70.6, 41.34]],
+      [[-70.25, 41.3], [-70.0, 41.29], [-69.97, 41.25], [-70.15, 41.24]],
+    ],
+    rivers: [
+      [[-74.02, 40.7], [-73.93, 41.0], [-73.95, 41.3], [-73.97, 41.7], [-73.9, 42.0], [-73.8, 42.4], [-73.75, 42.65], [-73.68, 43.0], [-73.6, 43.3], [-73.75, 43.6], [-73.9, 44.0]],
+      [[-72.35, 41.28], [-72.6, 41.55], [-72.65, 41.77], [-72.6, 42.1], [-72.58, 42.5], [-72.5, 42.75], [-72.42, 43.15], [-72.3, 43.6], [-72.05, 44.1], [-71.7, 44.5]],
+    ],
+    borders: [
+      [[-73.66, 41.0], [-73.52, 41.1], [-73.48, 41.65], [-73.5, 42.05], [-73.27, 42.75], [-73.25, 43.57], [-73.4, 43.7], [-73.35, 44.5]],
+      [[-73.5, 42.05], [-71.8, 42.02], [-71.79, 41.33]],
+      [[-71.8, 42.02], [-71.38, 42.02], [-71.38, 41.9], [-71.34, 41.73], [-71.12, 41.5]],
+      [[-73.27, 42.75], [-72.46, 42.73], [-71.3, 42.7], [-71.05, 42.84], [-70.82, 42.87]],
+      [[-70.7, 43.08], [-70.97, 43.35], [-70.99, 43.8], [-71.08, 44.5]],
+    ],
+  };
+
+  // the panel's nodes, and where the first seven are
+  const GRID_NODES = [
+    ["PROVIDENCE NODE", [-71.41, 41.82]], ["MANSFIELD NODE", [-72.23, 41.79]], ["SPRINGFIELD NODE", [-72.59, 42.1]],
+    ["AMHERST NODE", [-72.52, 42.37]], ["PORTLAND NODE", [-70.26, 43.66]], ["MANCHESTER NODE", [-71.46, 42.99]],
+    ["ALBANY NODE", [-73.76, 42.65]], ["AREA SUBSTATION"], ["REGIONAL NETWORK"], ["SYSTEM SHUTDOWN"],
+  ];
+  const FEEDERS = [[6, 2], [2, 1], [1, 0], [2, 3], [3, 5], [5, 4], [0, 5]];
+  const GRID_BUTTONS = ["REPORTS", "STAT SHUT-DOWN", "POWER CALIBRATE", "CONTROL FUNCTIONS", "EXIT"];
+
+  function drawGrid() {
+    const art = svg("svg", { viewBox: "0 0 800 600", class: "grid", role: "group", "aria-label": "U. S. Department of Energy, New England States Power Distribution Grid: emergency shutdown options" });
+    art.append(
+      svg("rect", { class: "frame", x: 5, y: 5, width: 790, height: 590, rx: 8 }),
+      label(400, 50, "U. S. Department of Energy", "title"),
+      label(400, 80, "New England States Power Distribution Grid", "subtitle"),
+      label(400, 116, "EMERGENCY SHUTDOWN OPTIONS", "alarm"),
+      svg("line", { class: "frame", x1: 5, y1: 132, x2: 795, y2: 132 }),
+    );
+
+    // the map
+    const box = { x: 228, y: 146, width: 550, height: 374 };
+    const project = projection({ ...box, west: -74.75, north: 44.3, south: 40.5 });
+    const map = svg("g", { class: "map", "aria-hidden": "true" });
+    const clip = svg("clipPath", { id: "grid-map" });
+    clip.append(svg("rect", box));
+    const land = svg("clipPath", { id: "grid-land" });
+    const shapes = [pathOf([...NEW_ENGLAND.coast, ...NEW_ENGLAND.beyond], project, true), ...NEW_ENGLAND.islands.map((island) => pathOf(island, project, true))];
+    for (const d of shapes) land.append(svg("path", { d }));
+    map.append(clip, land);
+    const inside = svg("g", { "clip-path": "url(#grid-map)" });
+    for (let y = box.y + 8; y < box.y + box.height; y += 12) inside.append(svg("line", { class: "sea", x1: box.x, y1: y, x2: box.x + box.width, y2: y }));
+    for (const d of shapes) inside.append(svg("path", { class: "land", d }));
+
+    // the lines: a maze of them, on land only
+    const random = seeded(1992);
+    let maze = "";
+    for (let i = 0; i < 620; i++) {
+      let x = box.x + random() * box.width;
+      let y = box.y + random() * box.height;
+      maze += `M${x.toFixed(0)} ${y.toFixed(0)}`;
+      let across = random() < 0.5;
+      for (let leg = 0; leg < 2 + Math.floor(random() * 3); leg++) {
+        const run = (6 + random() * 22) * (random() < 0.5 ? -1 : 1);
+        if (across) x += run;
+        else y += run;
+        maze += `${across ? "H" : "V"}${(across ? x : y).toFixed(0)}`;
+        across = !across;
+      }
+    }
+    inside.append(svg("path", { class: "maze", d: maze, "clip-path": "url(#grid-land)" }));
+    for (const d of shapes) inside.append(svg("path", { class: "coast", d }));
+    for (const river of NEW_ENGLAND.rivers) inside.append(svg("path", { class: "coast", d: pathOf(river, project) }));
+    for (const border of NEW_ENGLAND.borders) inside.append(svg("path", { class: "border", d: pathOf(border, project) }));
+
+    // the feeders, square-cornered, between the nodes
+    const at = GRID_NODES.map(([, place]) => place && project(place));
+    for (const [a, b] of FEEDERS) inside.append(svg("path", { class: "feeder", d: `M${at[a][0]} ${at[a][1]} H${at[b][0]} V${at[b][1]}` }));
+    const dots = at.map((point) => point && svg("rect", { class: "node", x: point[0] - 4, y: point[1] - 4, width: 8, height: 8 }));
+    inside.append(...dots.filter(Boolean));
+    map.append(inside, svg("rect", { class: "frame", ...box }));
+
+    // the panel of nodes, each a checkbox
+    const panel = svg("g", { class: "panel" });
+    panel.append(svg("rect", { class: "frame", x: 22, y: 146, width: 192, height: 374, rx: 3 }), svg("rect", { class: "frame thin", x: 28, y: 152, width: 180, height: 362, rx: 2 }));
+    GRID_NODES.forEach(([name], i) => {
+      const y = 182 + i * 34;
+      const row = hot({ role: "checkbox", "aria-checked": "false", "aria-label": name }, `node ${i}`,
+        svg("rect", { class: "row", x: 32, y: y - 17, width: 172, height: 26 }),
+        svg("rect", { class: "box", x: 38, y: y - 12, width: 14, height: 14 }),
+        svg("path", { class: "tick", d: `M40 ${y - 5} l4 4 l7 -9` }),
+        label(60, y, name, "label"));
+      row.dot = dots[i];
+      panel.append(row);
+    });
+
+    // the buttons along the bottom
+    const buttons = svg("g", { class: "buttons" });
+    const widths = [118, 156, 158, 186, 120];
+    let x = 22;
+    GRID_BUTTONS.forEach((name, i) => {
+      buttons.append(hot({ "aria-label": name }, name, svg("rect", { x, y: 532, width: widths[i] - 8, height: 46, rx: 4 }), label(x + (widths[i] - 8) / 2, 561, name, "button-label")));
+      x += widths[i];
+    });
+
+    art.append(map, panel, buttons);
+    onAct(art, (act, node) => gridAct(act, node));
+    return art;
+  }
+
+  function gridAct(act, node) {
+    if (act.startsWith("node ")) {
+      const on = node.getAttribute("aria-checked") !== "true";
+      node.setAttribute("aria-checked", String(on));
+      node.dot?.classList.toggle("picked", on);
+      if (act === "node 9" && on) {
+        say(["BISHOP", "Mother. Uncheck it."], () => {
+          node.setAttribute("aria-checked", "false");
+        });
+      }
+      return;
+    }
+    if (act === "EXIT") return hangUp(t);
+    say(GRID_OBJECTIONS[act]);
+  }
+
+  const GRID_OBJECTIONS = {
+    "REPORTS": ["WHISTLER", "Don't print anything, Mother. Paper trail."],
+    "STAT SHUT-DOWN": ["BISHOP", "Hey! Nobody shuts down anything."],
+    "POWER CALIBRATE": ["CREASE", "Don't touch it, Mother."],
+    "CONTROL FUNCTIONS": ["WHISTLER", "Easy, Mother. Easy."],
+  };
+
+  // the Bay Area for air traffic control: the shores, and the fixes and
+  // airways on the film's scope
+  const BAY = {
+    shores: [
+      [[-122.85, 37.95], [-122.69, 37.9], [-122.58, 37.86], [-122.53, 37.815], [-122.48, 37.83], [-122.48, 37.86], [-122.5, 37.88], [-122.45, 37.87], [-122.47, 37.91], [-122.48, 37.94], [-122.48, 37.97], [-122.5, 38.02], [-122.45, 38.08], [-122.35, 38.1], [-122.25, 38.06], [-122.22, 38.06], [-122.1, 38.05], [-121.95, 38.05], [-121.8, 38.06]],
+      [[-122.22, 38.04], [-122.3, 38.01], [-122.35, 37.97], [-122.39, 37.91], [-122.33, 37.9], [-122.31, 37.87], [-122.3, 37.83], [-122.3, 37.8], [-122.28, 37.77], [-122.24, 37.75], [-122.22, 37.71], [-122.19, 37.69], [-122.15, 37.63], [-122.12, 37.58], [-122.06, 37.52], [-122.0, 37.47], [-121.97, 37.43], [-122.02, 37.42], [-122.05, 37.43], [-122.11, 37.46], [-122.15, 37.48], [-122.2, 37.52], [-122.25, 37.56], [-122.3, 37.58], [-122.35, 37.6], [-122.37, 37.62], [-122.38, 37.66], [-122.39, 37.69], [-122.36, 37.72], [-122.38, 37.76], [-122.39, 37.79], [-122.41, 37.81], [-122.45, 37.81], [-122.48, 37.81], [-122.51, 37.78], [-122.51, 37.73], [-122.5, 37.68], [-122.5, 37.6], [-122.52, 37.55], [-122.47, 37.49], [-122.45, 37.45], [-122.41, 37.37], [-122.41, 37.27], [-122.33, 37.15]],
+    ],
+    fixes: {
+      SFO: [-122.375, 37.619], OAK: [-122.221, 37.721], SJC: [-121.929, 37.363], SUNOL: [-121.89, 37.59], ALTAM: [-121.71, 37.76],
+      OSI: [-122.27, 37.39], SUTRO: [-122.45, 37.755], BERKS: [-122.27, 37.88], COLLI: [-122.3, 38.12], SALAD: [-121.98, 37.97],
+      DECOT: [-122.05, 37.66], IMPLY: [-121.82, 37.68], MABRY: [-121.75, 37.5], MISON: [-121.84, 37.45], FAITH: [-121.76, 37.3],
+      BRIJJ: [-122.17, 37.5], SEEMS: [-122.68, 37.33], GOBBS: [-122.74, 37.72], COMMO: [-122.52, 37.98],
+    },
+    airways: [
+      ["V87", "COMMO", "BERKS", "OAK", "DECOT", "MABRY"], ["V107", "GOBBS", "SUTRO", "SFO", "BRIJJ", "MISON", "FAITH"], ["V109", "SALAD", "ALTAM"],
+      ["V195", "OAK", "SUNOL"], ["V334", "SUNOL", "IMPLY", "ALTAM"], ["V27", "SEEMS", "OSI", "SJC"], ["V6", "COLLI", "SALAD"],
+    ],
+  };
+
+  // the flight strips down the side, as the film has them
+  const STRIPS = [
+    [["5:36", "110"], ["T/O SFO MABRY", "Ctr"]],
+    [["DAL27", "L24"], ["ACTIVE"]],
+    [["7:06", "70"], ["T/O OAK SUNOL", "Ctr"]],
+    [["N9249N", "737"], ["ACTIVE"]],
+    [["7:12", "120"], ["ALTAM SUNOL", "SJC Twr"]],
+    [["N92IN", "V1730"], ["ACTIVE"]],
+    [["8:18", "90"], ["T/O SJC SUNOL", "ALTAM Ctr"]],
+  ];
+
+  // targets, their data blocks, and where they're headed each sweep
+  const PLANES = [
+    { tag: "DAL27", alt: "100 21", x: 500, y: 430, dx: -3, dy: -2, color: "green" },
+    { tag: "N9249N", alt: "100 18", x: 300, y: 515, dx: 2, dy: -3, color: "white" },
+    { tag: "N92IN", alt: "120 25", x: 470, y: 250, dx: 3, dy: 1, color: "green" },
+  ];
+
+  function drawAtc(call) {
+    const art = svg("svg", { viewBox: "0 0 800 600", class: "atc", role: "img", "aria-label": "Air traffic control radar: the San Francisco Bay, its fixes and airways, three aircraft, and the flight strips" });
+    const project = projection({ x: 0, y: 0, width: 600, height: 600, west: -122.8, north: 38.15, south: 37.15 });
+    const scope = svg("g");
+    const clip = svg("clipPath", { id: "atc-scope" });
+    clip.append(svg("rect", { x: 0, y: 0, width: 600, height: 600 }));
+    scope.append(clip);
+    const inside = svg("g", { "clip-path": "url(#atc-scope)" });
+    const [cx, cy] = project(BAY.fixes.SFO);
+    for (let r = 90; r <= 450; r += 90) inside.append(svg("circle", { class: "ring", cx, cy, r }));
+    inside.append(
+      svg("path", { class: "boundary", d: "M60 70 L240 0" }),
+      svg("path", { class: "boundary", d: "M110 170 Q150 400 215 600" }),
+      svg("path", { class: "boundary", d: "M500 8 Q560 300 590 560 L520 600" }),
+    );
+    for (const [name, ...fixes] of BAY.airways) {
+      const points = fixes.map((fix) => project(BAY.fixes[fix]));
+      inside.append(svg("path", { class: "airway", d: points.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ") }));
+      // the airway's name a third of the way along its first leg
+      const [[ax, ay], [bx, by]] = points;
+      inside.append(label(ax + (bx - ax) * 0.35 + 6, ay + (by - ay) * 0.35 - 6, name, "victor"));
+    }
+    for (const shore of BAY.shores) inside.append(svg("path", { class: "coast", d: pathOf(shore, project) }));
+    for (const [name, place] of Object.entries(BAY.fixes)) {
+      const [x, y] = project(place);
+      inside.append(svg("path", { class: "fix", d: `M${x} ${y - 4} L${x + 4} ${y + 3} L${x - 4} ${y + 3} Z` }), label(x + 7, y - 6, name, "fix-name"));
+    }
+    call.planes = PLANES.map((plane) => {
+      const g = svg("g", { class: `plane ${plane.color}` });
+      g.append(
+        svg("path", { class: "blip", d: "M-5 0 H5 M0 -5 V5" }),
+        svg("line", { class: "leader", x1: 6, y1: -4, x2: 18, y2: -14 }),
+        label(20, -20, plane.tag, ""), label(20, 2, plane.alt, ""),
+      );
+      inside.append(g);
+      return { ...plane, g };
+    });
+    scope.append(inside);
+
+    const strips = svg("g", { class: "strips" });
+    strips.append(svg("rect", { class: "column", x: 608, y: 4, width: 188, height: 592 }));
+    STRIPS.forEach(([[top, bottom], route], i) => {
+      const y = 12 + i * 80;
+      strips.append(
+        svg("rect", { class: "strip", x: 614, y, width: 176, height: 74 }),
+        svg("line", { class: "split", x1: 682, y1: y, x2: 682, y2: y + 74 }),
+        label(648, y + 30, top, "", { "text-anchor": "middle" }),
+        label(648, y + 60, bottom, "", { "text-anchor": "middle" }),
+      );
+      if (route.length === 1) strips.append(label(736, y + 45, route[0], "", { "text-anchor": "middle" }));
+      else strips.append(label(688, y + 30, route[0], ""), label(688, y + 60, route[1], ""));
+    });
+    art.append(scope, strips);
+    placePlanes(call);
+    return art;
+  }
+
+  function placePlanes(call) {
+    for (const plane of call.planes) plane.g.setAttribute("transform", `translate(${plane.x} ${plane.y})`);
+  }
+
+  // the scope updates each sweep
+  function sweep(call) {
+    if (reduceMotion.matches) return;
+    call.sweep = setInterval(() => {
+      for (const plane of call.planes) Object.assign(plane, { x: plane.x + plane.dx, y: plane.y + plane.dy });
+      placePlanes(call);
+    }, 4000);
+  }
+
+  // ---------- The three places, and what the team says ----------
+
+  const calling = (id) => link?.target.id === id;
+  const NEXT = { fed: "Federal Reserve Transfer Node.", grid: "National power grid.", atc: "Air traffic control system." };
+
+  function whatElse() {
+    const next = ["fed", "grid", "atc"].find((id) => !story.cracked.has(id));
+    if (!next) return [];
+    return [["BISHOP", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => point(next), ["CARL", NEXT[next]]];
+  }
+
+  const TARGETS = {
+    fed: {
+      id: "fed",
+      connected: () => once("fed connected", ["MOTHER", "You won't get in. It's encrypted."], 400, () => (calling("fed") && !link.decoding ? ["WHISTLER", "Mother. That last contact."] : null)),
+      decoded: () => once("fed decoded", ["MOTHER", "Take a look at this, boys."], ["MOTHER", "Anybody want to shut down the Federal Reserve?"],
+        ["BISHOP", "Hey, hey, hey! Don't screw around with that thing!"], ...whatElse()),
+      choose(line) {
+        if (!Object.hasOwn(FED_CHOICES, line)) return false;
+        say(FED_CHOICES[line]);
+        return true;
+      },
+    },
+    grid: {
+      id: "grid",
+      draw: drawGrid,
+      connected: () => {},
+      decoding: () => once("grid decoding", ["MOTHER", "Okay, here we come..."], ["MOTHER", "Rolling."]),
+      decoded: () => once("grid decoded", ["CARL", "Wow."], ["BISHOP", "Unbelievable."], ["MOTHER", "Anybody want to black out New England?"], ...whatElse()),
+    },
+    atc: {
+      id: "atc",
+      draw: drawAtc,
+      connected: () => once("atc connected", ["BISHOP", "Okay. Mother."]),
+      decoded: (call) => {
+        sweep(call);
+        once("atc decoded",
+          ["LIZ", "Oh my God."],
+          ["CREASE", "How is this possible?"],
+          ["LIZ", "Cryptography systems are based on mathematical problems so complex they cannot be solved without a key."],
+          ["LIZ", "Janek must have figured out a way to solve those problems without the key..."],
+          ["LIZ", "...and he hardwired it into that chip."],
+          () => (calling("atc") ? ["BISHOP", "All right. Turn it off."] : null),
+          1500,
+          () => (calling("atc") ? ["MOTHER", "Anybody want to crash a couple of passenger jets?"] : null),
+          () => (calling("atc") ? ["BISHOP", "I said turn it off."] : null),
+        );
+      },
+    },
+  };
+
+  // off, at last
+  function ending() {
+    once("ending",
+      800,
+      ["CREASE", "So it's a code breaker."],
+      ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
+      1600,
+      ["WHISTLER", "No more secrets."],
+      () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
+    );
+  }
+
+  // what's typed during a call goes to the far end, or hangs up, or dials
+  // again; the probe commands still move the probe
+  function remote(t, line) {
+    if (HANG_UP.has(line)) return hangUp(t);
+    const digits = dialed(line);
+    if (digits) return dial(t, digits);
+    const [name, ...args] = line.split(" ");
+    if (["next", "back", "pin", "quad"].includes(name)) return commands[name](quiet, args) || true;
+    if (Object.hasOwn(PHRASES, line)) return PHRASES[line](t) || true;
+    if (link.decoded && link.target.choose?.(line)) return true;
+    beep();
+    return true;
+  }
+
+  // the screen's way of saying no
+  function beep() {
+    monitor.classList.remove("beep");
+    void monitor.offsetWidth;
+    monitor.classList.add("beep");
+  }
+
   // ---------- Commands ----------
 
   const commands = {
@@ -622,6 +1430,9 @@
         "  pin N     pin N, 1 to 48",
         "  quad N    the first pin of quadrant N, 1 to 4",
         "  reboot    clear the screen (ALT-R)",
+        "",
+        "  ATDT N    dial number N, or click one in Carl's book",
+        "  ATH       hang up (or Escape)",
         "",
       );
     },
@@ -653,37 +1464,71 @@
     "try another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
     "another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
     "stay in that quadrant": () => goTo(current ? pinAt(current.n % 12 === 0 ? current.n - 11 : current.n + 1) : PINS[0]),
+    "punch it in": (t) => {
+      const entry = BOOK.find((e) => e.node.classList.contains("pointed"));
+      return story.live && entry ? dial(t, digitsOf(entry.number)) : false;
+    },
+    "carl what else you got": () => carlWhatElse(),
+    "what else you got": () => carlWhatElse(),
+    "carl what else": () => carlWhatElse(),
+    "what else": () => carlWhatElse(),
   };
 
+  function carlWhatElse() {
+    if (!story.live) return false;
+    const next = whatElse();
+    say(...(next.length ? next.slice(1) : [["CARL", "That's everything I've got."]]));
+    return true;
+  }
+
   function fallback(t, line) {
-    if (Object.hasOwn(PHRASES, line)) return PHRASES[line]() || true;
+    if (link) return remote(t, line);
+    if (Object.hasOwn(PHRASES, line)) {
+      const result = PHRASES[line](t);
+      if (result !== false) return result || true;
+    }
+    const digits = dialed(line);
+    if (digits) return dial(t, digits);
+    if (HANG_UP.has(line)) return hangUp(t);
     return false;
   }
+
+  // during a call, every line goes to the far end
+  const routed = Object.fromEntries(Object.entries(commands).map(([name, run]) =>
+    [name, (t, args, line) => (link ? remote(t, line) : run(t, args, line))]));
 
   // ---------- The terminal ----------
 
   const t = Terminal.create({
     prompt: "> ",
-    commands,
+    commands: routed,
     fallback,
+    echo: () => !link,
+    onEscape: (t) => link && hangUp(t),
     unrecognized: () => "Bad command or file name",
     filters: [(line) => line.toLowerCase().replace(/[.,!?]/g, "").replace(/\s+/g, " ").trim()],
     cps: 120,
     name: "sneakers",
   });
+  const quiet = Object.assign(Object.create(t), { print: beep, error: beep });
   window.term = t;
   window.bench = {
     touch: (n) => goTo(pinAt(n)),
     lift: () => touch(null),
     get decryption() { return PINS.find((pin) => pin.kind === "magic")?.n; },
+    live() {
+      if (!keyQuad) wire(1);
+      goLive();
+    },
+    get link() { return link; },
     story,
   };
 
-  // the footer's keys, by click or by key
+  // the footer's keys, by click or by key (the footer's gone during a call)
   const ACTIONS = {
     next: () => step(1),
-    reboot: () => commands.reboot(t),
-    help: () => commands.help(t),
+    reboot: () => link || commands.reboot(t),
+    help: () => link || commands.help(t),
   };
 
   document.getElementById("keys").addEventListener("click", (e) => {

@@ -22,6 +22,7 @@
       filters: [(line) => line.toLowerCase()],  // run on a line before parsing
       clearOnCommand: false,     // wipe the screen on each command (Alien)
       echo: true,                // print the prompt and command after Enter
+                                 // (or a function that says whether, per line)
       typingSpeed: 60,           // ms per character for t.run()
       cursor: "blink",           // or "steady"
       name: "alien",             // keeps this terminal's history apart from others'
@@ -365,6 +366,8 @@
       toBottom();
     }
 
+    const echoing = () => (typeof o.echo === "function" ? o.echo() : o.echo);
+
     function submit(text) {
       if (state.locked) return Promise.resolve();
       const line = text.trim();
@@ -374,7 +377,7 @@
       state.draft = "";
 
       if (o.clearOnCommand) clear();
-      else if (o.echo) display.append(el("p", { class: "command" }, state.prompt + text));
+      else if (echoing()) display.append(el("p", { class: "command" }, state.prompt + text));
       if (!line) {
         toBottom();
         return Promise.resolve();
@@ -574,7 +577,7 @@
     function listCompletions(choices, before) {
       const cut = Math.max(before.lastIndexOf(" "), before.lastIndexOf("/")) + 1;
       const labels = choices.map((choice) => choice.slice(cut).trimEnd());
-      if (!o.clearOnCommand && o.echo) display.append(el("p", { class: "command" }, state.prompt + input.value));
+      if (!o.clearOnCommand && echoing()) display.append(el("p", { class: "command" }, state.prompt + input.value));
       if (o.showCompletions) o.showCompletions(t, labels);
       else print(labels.join("  "));
       toBottom();
