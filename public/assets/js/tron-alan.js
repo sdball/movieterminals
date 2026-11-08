@@ -407,7 +407,7 @@
         ["date", "the date and time", "date"],
         ["env", "your environment", "env"],
         ["file", "guess what a file holds", "file file ..."],
-        ["grep", "search files for a pattern", "grep [-i] [-n] [-v] pattern [file ...]"],
+        ["grep", "search files for a pattern", "grep [-c] [-i] [-n] [-v] pattern [file ...]"],
         ["groups", "the groups you're in", "groups [user]"],
         ["head", "the first lines of a file", "head [-n] [file ...]"],
         ["hostname", "this system's name", "hostname"],
@@ -1142,7 +1142,7 @@
       const flags = new Set();
       while (args[0]?.startsWith("-") && args[0].length > 1) for (const f of args.shift().slice(1)) flags.add(f);
       const [rawPattern, ...paths] = args;
-      if (!rawPattern || (!paths.length && !t.stdin)) return t.error("usage: grep [-i] [-n] [-v] pattern [file ...]");
+      if (!rawPattern || (!paths.length && !t.stdin)) return t.error("usage: grep [-c] [-i] [-n] [-v] pattern [file ...]");
       const pattern = rawPattern.replace(/^(["'])(.*)\1$/, "$2");
       let re;
       try {
@@ -1154,6 +1154,12 @@
       const { sources, guarded } = inputs(t, "grep", paths, (path) => find(path).node?.type === "dir");
       const out = [];
       for (const source of sources) {
+        // -c: how many lines match, not the lines
+        if (flags.has("c")) {
+          const n = text(source).filter((line) => re.test(line) !== flags.has("v")).length;
+          out.push(`${paths.length > 1 ? source.path + ":" : ""}${n}`);
+          continue;
+        }
         text(source).forEach((line, i) => {
           if (re.test(line) === flags.has("v")) return;
           out.push(`${paths.length > 1 ? source.path + ":" : ""}${flags.has("n") ? i + 1 + ":" : ""}${line}`);
@@ -1782,6 +1788,60 @@
     }, 1500);
   }
 
+  // ---------- Redirection ----------
+  // sh opens the files, with Bourne's messages, and the same permissions as
+  // everything else. A guarded file answers for the MCP. /dev/null takes
+  // anything, and Alan's own terminal, /dev/tty7, prints it.
+
+  async function readFrom(t, path) {
+    const found = find(path);
+    if (found.node?.guarded) {
+      t.error(...(found.node.sealed || found.node.lines));
+      await suspect(t);
+      return null;
+    }
+    if (found.error || found.node.type === "dir" || !can(found.node, "r")) {
+      t.error(`${path}: cannot open`);
+      if (found.guarded) await suspect(t);
+      return null;
+    }
+    return found.node.lines.slice();
+  }
+
+  async function writeTo(t, path, lines, append) {
+    const found = find(path);
+    const { node } = found;
+    if (node?.guarded) {
+      t.error(...(node.sealed || node.lines));
+      await suspect(t);
+      return false;
+    }
+    if (node) {
+      if (node.type === "dir" || !can(node, "w")) {
+        t.error(`${path}: cannot create`);
+        return false;
+      }
+      if (node.type === "dev") {
+        if (node === root.children.dev.children.tty7 && lines.length) t.screen.print(...lines);
+        return true;
+      }
+      if (!append) Object.assign(node, { lines: [], binary: false, strings: undefined, kind: undefined, hang: undefined });
+      node.lines.push(...lines);
+      node.mtime = stamp();
+      return true;
+    }
+    // a new file, in a directory Alan can write; it takes the directory's group
+    const parts = split(path);
+    const parent = find(join(parts.slice(0, -1)));
+    if (!parts.length || parent.error || parent.node.type !== "dir" || !can(parent.node, "w")) {
+      t.error(`${path}: cannot create`);
+      if (parent.guarded || parent.node?.guarded) await suspect(t);
+      return false;
+    }
+    parent.node.children[baseName(parts)] = file(USER.name, parent.node.group, "rw-r--r--", stamp(), [...lines]);
+    return true;
+  }
+
   // ---------- Tab completion ----------
   // The first word completes to a command (or, with a /, a program by
   // path), the rest to paths. Only directories Alan can read complete, the
@@ -1818,7 +1878,9 @@
 
   function completions(before) {
     if (state.mail) return [];
-    const word = before.match(/\S*$/)[0];
+    // a redirection's file name, even right after the > or <
+    const [, operator, word] = before.match(/(2?>>?|<)?([^\s<>]*)$/);
+    if (operator) return pathsFor(word).map((choice) => before.slice(0, before.length - word.length) + choice);
     const head = before.slice(0, before.length - word.length);
     const [cmd, ...args] = head.slice(head.lastIndexOf("|") + 1).trim().split(/\s+/).filter(Boolean);
     if (/[*?]/.test(word)) return [];
@@ -1843,9 +1905,12 @@
     prompt: PROMPT,
     commands,
     filters: [
-      // the shell expands * and ?, except at mail's & prompt; a | is a
-      // word of its own, even without spaces
-      (line) => (state.mail ? line : line.replace(/\|/g, " | ").trim().split(/\s+/).map((word, i) => (i ? glob(word) : word)).join(" ")),
+      // the shell expands * and ?, except at mail's & prompt; |, >, >>,
+      // and < are words of their own, even without spaces (2> stays put)
+      (line) => (state.mail ? line : line
+        .replace(/\|/g, " | ")
+        .replace(/(?<!(?:^|\s)2>?)(>>?|<)/g, " $1 ")
+        .trim().split(/\s+/).map((word, i) => (i ? glob(word) : word)).join(" ")),
       // at the mail program's & prompt, every line goes to mail
       (line) => (state.mail ? `& ${line}` : line),
     ],
@@ -1859,6 +1924,7 @@
     unrecognized: (name) => `${name}: not found`,
     onTab: (t, before) => completions(before),
     pipes: () => !state.mail,
+    files: { read: readFrom, write: writeTo },
     syntaxError: (token) => `syntax error: \`${token}' unexpected`,
     showCompletions: (t, labels) => t.print(...columns(labels)),
     typingSpeed: 60,

@@ -72,16 +72,30 @@
 
     Without onTab, Tab moves the focus as usual. Shift+Tab always does.
 
-  ---------- Pipes ----------
+  ---------- Pipes and redirection ----------
 
     With pipes: true (or a function that says whether, per line), "a | b"
     runs a, then b, in turn. In a stage before the last, t.print and t.type
     write lines of text into the pipe instead of the screen, and t.piped is
     true. The next stage reads them as t.stdin (an array of strings; null
-    when there's no pipe). t.error(...lines) always prints to the screen, as
-    does t.screen, the terminal itself: use them for errors and anything
-    that shouldn't go down the pipe. An empty stage ("ls |") prints
+    when there's no pipe). t.error(...lines) prints to the screen, as does
+    t.screen, the terminal itself: use them for errors and anything that
+    shouldn't go down the pipe. An empty stage ("ls |") prints
     syntaxError("|").
+
+    With files as well, a stage can take < file, > file, >> file, 2> file,
+    2>> file, and 2>&1:
+
+      files: {
+        read(t, path)                 the file's lines, or null (say why)
+        write(t, path, lines, append) true, or false (say why)
+      }
+
+    Either may be async. Before a stage runs, its output file is opened by
+    writing no lines to it (append for >>), as sh does: if that fails, the
+    command doesn't run, and > empties the file first. Then what it printed
+    is appended. Output to a file is t.piped too. "> file" alone just opens
+    it. A missing file name prints syntaxError("newline").
 
   ---------- Links and history ----------
 
@@ -142,6 +156,7 @@
       onTab: null,
       showCompletions: null,
       pipes: false,
+      files: null,
       syntaxError: (token) => `syntax error near ${token}`,
       ...options,
     };
@@ -368,10 +383,15 @@
       const filtered = o.filters.reduce((acc, filter) => filter(acc), line);
       const piping = typeof o.pipes === "function" ? o.pipes() : o.pipes;
       const stages = piping ? filtered.split("|").map((stage) => stage.trim()) : [filtered];
+      const redirecting = piping && o.files && /[<>]/.test(filtered);
       let result;
-      if (stages.length === 1) result = dispatch(t, filtered);
-      else if (stages.some((stage) => !stage)) print(o.syntaxError("|"));
-      else result = pipeline(stages);
+      if (stages.length === 1 && !redirecting) result = dispatch(t, filtered);
+      else {
+        const parsed = stages.map((stage, i) => parseStage(stage, redirecting, i === stages.length - 1));
+        const bad = parsed.find((stage) => stage.error);
+        if (bad) print(o.syntaxError(bad.error));
+        else result = pipeline(parsed);
+      }
       toBottom();
       if (!result) return Promise.resolve();
 
@@ -390,41 +410,83 @@
       let result;
       try {
         if (Object.hasOwn(commands, name)) result = commands[name](tt, args, line);
-        else if (!(o.fallback && (result = o.fallback(tt, line)))) print(o.unrecognized(name, line));
+        else if (!(o.fallback && (result = o.fallback(tt, line)))) tt.error(o.unrecognized(name, line));
       } catch (error) {
         printError(error);
       }
       if (!result || typeof result.then !== "function") return undefined;
-      return result.then((value) => { if (value === false) print(o.unrecognized(name, line)); }, printError);
+      return result.then((value) => { if (value === false) tt.error(o.unrecognized(name, line)); }, printError);
     }
 
-    // ---------- Pipes ----------
+    // ---------- Pipes and redirection ----------
     // Each stage runs in turn. A stage before the last prints into a pipe,
     // as lines of text, and the next reads them as t.stdin. t.error and
-    // t.screen still reach the screen.
+    // t.screen still reach the screen, unless 2> sends errors elsewhere.
 
+    const OPERATOR = /^(2?>>?|<|2>&1)$/;
+
+    // a stage's command and its redirections: { line, from, to, err }, or
+    // { error } with the token sh would complain about
+    function parseStage(text, redirecting, last) {
+      const stage = { line: text, from: null, to: null, err: null };
+      if (!redirecting || !/[<>]/.test(text)) return text ? stage : { error: "|" };
+      const tokens = text.match(/(?<=^|\s)2>&1|(?<=^|\s)2>>?|>>?|<|[^\s<>]+/g) || [];
+      const words = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        if (!OPERATOR.test(token)) words.push(token);
+        else if (token === "2>&1") stage.err = "out";
+        else {
+          const target = tokens[++i];
+          if (!target || OPERATOR.test(target)) return { error: target || (last ? "newline" : "|") };
+          if (token === "<") stage.from = target;
+          else if (token.startsWith("2")) stage.err = { path: target, append: token === "2>>" };
+          else stage.to = { path: target, append: token === ">>" };
+        }
+      }
+      stage.line = words.join(" ");
+      return stage;
+    }
+
+    // like sh, open a stage's files before it runs (so > empties its file
+    // first, and a file that won't open means the command doesn't run),
+    // then write what it printed
     async function pipeline(stages) {
       let stdin = null;
-      for (const [i, line] of stages.entries()) {
-        const out = i < stages.length - 1 ? [] : null;
-        await dispatch(stage(stdin, out), line);
-        stdin = out;
+      for (const [i, { line, from, to, err }] of stages.entries()) {
+        const last = i === stages.length - 1;
+        let input = stdin;
+        stdin = last ? null : [];
+        const errTo = err && err !== "out" ? err : null;
+        if (from && !(input = await o.files.read(t, from))) continue;
+        if (to && !(await o.files.write(t, to.path, [], to.append))) continue;
+        if (errTo && !(await o.files.write(t, errTo.path, [], errTo.append))) continue;
+        const out = to || !last ? [] : null;
+        const errors = errTo ? [] : null;
+        if (line) await dispatch(stage(input, out, errors, err === "out"), line);
+        if (to) await o.files.write(t, to.path, out, true);
+        else if (!last) stdin = out;
+        if (errTo) await o.files.write(t, errTo.path, errors, true);
       }
     }
 
-    function stage(stdin, out) {
+    function stage(stdin, out, errors, merge) {
       const s = Object.create(t);
       s.stdin = stdin;
       if (out) {
         s.piped = true;
-        s.print = (...lines) => {
-          if (!lines.length) lines = [""];
-          for (const line of lines) out.push(...asText(line).split("\n"));
-        };
+        s.print = into(out);
         s.type = async (lines) => s.print(...lines);
       }
+      if (errors) s.error = into(errors);
+      else if (merge) s.error = s.print;
       return s;
     }
+
+    const into = (list) => (...lines) => {
+      if (!lines.length) lines = [""];
+      for (const line of lines) list.push(...asText(line).split("\n"));
+    };
 
     const asText = (line) => (line instanceof Node ? line.textContent : line == null ? "" : String(line));
 

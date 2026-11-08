@@ -71,6 +71,12 @@ and a fallback, then `t.boot(...)` with its opening.
   the screen and not the pipe. TRON's readers (cat, grep, head, tail, wc,
   strings, sort, uniq) take the pipe when they name no file, through
   `inputs()`; ls prints a name a line into a pipe.
+- Redirection: with `files: { read, write }` as well, a stage takes `<`,
+  `>`, `>>`, `2>`, `2>>`, and `2>&1`. Like sh, the engine opens the output
+  first (write with no lines), so a failed open skips the command and `>`
+  empties the file before it runs. TRON's hooks (`readFrom`, `writeTo`)
+  follow the permissions: `cannot create`/`cannot open`, the MCP for
+  guarded files, /dev/null discards, /dev/tty7 prints to the screen.
 - Keys: Enter submits (the form's submit, so a phone's send key works),
   Tab completes (with `onTab`), up/down walk history, Shift+up/down and
   Page Up/Down scroll, Ctrl+L clears, Ctrl+C abandons the line. Typing
