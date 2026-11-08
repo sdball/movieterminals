@@ -398,7 +398,17 @@ kbd {
   overflow-wrap: anywhere;
 }
 
-kbd + br + kbd { margin-top: 0.35rem; }
+kbd + br + kbd,
+.run + br + kbd,
+:is(kbd, .run) + br + .run kbd { margin-top: 0.35rem; }
+
+/* A command that opens the terminal and runs it */
+a.run { text-decoration: none; }
+a.run kbd { transition: box-shadow 0.15s; }
+a.run:hover kbd,
+a.run:focus-visible kbd { box-shadow: inset 0 0 0 1px var(--phosphor); }
+a.run:focus-visible { outline: none; }
+a.run:focus-visible kbd { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .alien kbd { text-transform: uppercase; }
 

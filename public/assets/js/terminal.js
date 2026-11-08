@@ -24,6 +24,7 @@
       echo: true,                // print the prompt and command after Enter
       typingSpeed: 60,           // ms per character for t.run()
       cursor: "blink",           // or "steady"
+      name: "alien",             // keeps this terminal's history apart from others'
     });
     t.boot(async (t) => { ... });  // runs once the screen has powered on
 
@@ -53,9 +54,22 @@
                         page, for a menu or the like; t.release() brings it back
     t.lock()            shut the terminal down for good
     t.setPrompt(text)
+    t.links             the commands a link asked for (see below)
 
   Options also take cps (teletype speed, default 90) and onEscape(t), for
   Escape on an empty command line.
+
+  ---------- Links and history ----------
+
+    A link can run commands: alien/?run=SHIP%20STATUS, or more than one in
+    order, tron-alan/?run=mail&run=3. Once the opening finishes, each is
+    typed into the command line and run (unless the opening left the page
+    holding the keyboard, or the terminal locked). The page's address drops
+    the run= part, so a reload starts fresh. t.links lists them, so an
+    opening can make way for them.
+
+    History is kept across visits in localStorage, under options.name
+    (default: the page's path), the last 100 lines.
 
   ---------- Keys ----------
 
@@ -137,6 +151,38 @@
       ahead: "",        // typed while output was running, for the next line
     };
 
+    // ---------- History across visits ----------
+
+    const HISTORY_MAX = 100;
+    const historyKey = `movieterminals.history.${o.name || location.pathname}`;
+    try {
+      const saved = JSON.parse(localStorage.getItem(historyKey));
+      if (Array.isArray(saved)) state.history = saved.filter((line) => typeof line === "string").slice(-HISTORY_MAX);
+    } catch {}
+    state.at = state.history.length;
+
+    function remember(line) {
+      if (!line || line === state.history[state.history.length - 1]) return;
+      state.history.push(line);
+      if (state.history.length > HISTORY_MAX) state.history.splice(0, state.history.length - HISTORY_MAX);
+      try {
+        localStorage.setItem(historyKey, JSON.stringify(state.history));
+      } catch {}
+    }
+
+    // ---------- Links ----------
+
+    // ?run=... asks for commands; take them out of the address so a reload
+    // (or "sit down again") starts fresh
+    const url = new URL(location.href);
+    const links = url.searchParams.getAll("run").map((line) => line.trim()).filter(Boolean);
+    if (url.searchParams.has("run")) {
+      url.searchParams.delete("run");
+      try {
+        history.replaceState(history.state, "", url);
+      } catch {}
+    }
+
     const t = {
       el,
       sleep: pause,
@@ -151,6 +197,7 @@
       setPrompt,
       boot,
       get input() { return input; },
+      get links() { return links.slice(); },
     };
 
     // ---------- Output ----------
@@ -274,7 +321,7 @@
       if (state.locked) return Promise.resolve();
       const line = text.trim();
       input.value = "";
-      if (line && line !== state.history[state.history.length - 1]) state.history.push(line);
+      remember(line);
       state.at = state.history.length;
       state.draft = "";
 
@@ -489,6 +536,10 @@
       if (!reduceMotion.matches) await sleep(550);
       if (!matchMedia("(pointer: coarse)").matches) input.focus({ preventScroll: true });
       if (opening) await opening(t);
+      for (const line of links) {
+        if (state.held || state.locked) break;
+        await run(line);
+      }
       setReady(true);
     }
 

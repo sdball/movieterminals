@@ -1,7 +1,8 @@
 /*
   MU-TH-UR 6000, the Nostromo's computer in Alien (1979).
 
-  It boots to the overmonitoring address matrix. Arrow keys (or a click or
+  It boots to the overmonitoring address matrix (or, from a link that runs
+  commands, straight to the prompt). Arrow keys (or a click or
   tap) pick an address. INTERFACE 2037 opens the inquiry prompt, the way
   Dallas does it in the film; the other addresses show a readout. Escape on
   an empty prompt, or ADDRESS MATRIX, goes back.
@@ -297,6 +298,7 @@
     typingSpeed: 80,
     cps: 55,
     onEscape: (t) => showMatrix(t, { quick: true }),
+    name: "alien",
   });
   window.term = t;
 
@@ -321,5 +323,7 @@
     else choose(t, +entry.dataset.row, +entry.dataset.col);
   });
 
-  t.boot((t) => showMatrix(t));
+  // a link with commands (?run=SHIP%20STATUS) goes straight to the inquiry
+  // prompt, as if Dallas had already picked INTERFACE 2037
+  t.boot((t) => (t.links.length ? undefined : showMatrix(t)));
 })();

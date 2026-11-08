@@ -758,6 +758,7 @@
     },
     typingSpeed: 60,
     cursor: "steady",
+    name: "tron-alan",
   });
   window.term = t;
 

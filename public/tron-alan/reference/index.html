@@ -35,7 +35,7 @@
       <header>
         <h2 id="commands">Commands</h2>
         <p class="sub">Tron won't start: the address file is empty. Find it.</p>
-        <p>The terminal is on screen only briefly, so most of this fills it out as a Unix of the "future". Poking at what the MCP guards makes it suspicious, and it may log you out. You keep what you've done.</p>
+        <p>The terminal is on screen only briefly, so most of this fills it out as a Unix of the "future". Poking at what the MCP guards makes it suspicious, and it may log you out. You keep what you've done. Select a command to open the terminal and run it there.</p>
       </header>
 
       <table class="commands">
@@ -50,13 +50,13 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>mail</kbd><br><kbd>mail [number]</kbd></td>
+            <td><a class="run" href="../?run=mail"><kbd>mail</kbd></a><br><kbd>mail [number]</kbd></td>
             <td>
               <p>Reads Alan's mail. At the <code>&amp;</code> prompt, type a message number to read it, <code>h</code> to list messages, <code>?</code> for help, or <code>q</code> to quit.</p>
             </td>
           </tr>
           <tr>
-            <td><kbd>date</kbd></td>
+            <td><a class="run" href="../?run=date"><kbd>date</kbd></a></td>
             <td>
               <p>The date and time on Alan's terminal at the start of <cite>TRON</cite>, in ENCOM's Pacific time, written the way his screen writes it.</p>
               <p>The clock keeps running, so each run gives a different time.</p>
@@ -75,7 +75,7 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>pwd</kbd></td>
+            <td><a class="run" href="../?run=pwd"><kbd>pwd</kbd></a></td>
             <td>
               <p>Prints the current directory's path.</p>
             </td>
@@ -93,7 +93,7 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>who</kbd><br><kbd>query [user]</kbd></td>
+            <td><a class="run" href="../?run=who"><kbd>who</kbd></a><br><kbd>query [user]</kbd></td>
             <td>
               <p>Who's logged in. <code>query</code>, one of ENCOM's own commands, looks someone up, plan and all.</p>
             </td>
@@ -105,7 +105,7 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>whoami</kbd><br><kbd>ps</kbd><br><kbd>ps aux</kbd><br><kbd>kill [-9] [pid]</kbd></td>
+            <td><a class="run" href="../?run=whoami"><kbd>whoami</kbd></a><br><a class="run" href="../?run=ps"><kbd>ps</kbd></a><br><a class="run" href="../?run=ps%20aux"><kbd>ps aux</kbd></a><br><kbd>kill [-9] [pid]</kbd></td>
             <td>
               <p>Who you are, what's running (<code>ps aux</code> or <code>ps -ef</code> for everyone's), and stopping it. The MCP is always running.</p>
             </td>
@@ -117,7 +117,7 @@
             </td>
           </tr>
           <tr>
-            <td><kbd>help</kbd></td>
+            <td><a class="run" href="../?run=help"><kbd>help</kbd></a></td>
             <td>
               <p>Lists every command: ENCOM's own, the system's, and the shell's. <code>help [command]</code> describes one.</p>
             </td>
@@ -141,11 +141,11 @@
       <details>
         <summary>Show the walkthrough</summary>
         <ol>
-          <li>Read your mail: <kbd>mail</kbd>, then <kbd>3</kbd>. Lora's been running a copy of TRON in the laser lab.</li>
-          <li><kbd>ls /lab/laser</kbd> is denied, and <kbd>ls -l /lab</kbd> shows why: you can't list the lab directory, but you can read a file in it if you know the name.</li>
-          <li><kbd>query lora</kbd>, <kbd>talk lora</kbd>, or <kbd>ps aux</kbd> names today's log: <kbd>cat /lab/laser/log.0922</kbd>. (Today is <kbd>date</kbd>: SEPT 22.)</li>
-          <li>The log says she saved it as addr.bak: <kbd>cp /lab/laser/addr.bak tron.addr</kbd></li>
-          <li><kbd>service start tron</kbd></li>
+          <li>Read your mail: <a class="run" href="../?run=mail"><kbd>mail</kbd></a>, then <a class="run" href="../?run=mail&amp;run=3" title="Runs mail, then 3"><kbd>3</kbd></a>. Lora's been running a copy of TRON in the laser lab.</li>
+          <li><a class="run" href="../?run=ls%20/lab/laser"><kbd>ls /lab/laser</kbd></a> is denied, and <a class="run" href="../?run=ls%20-l%20/lab"><kbd>ls -l /lab</kbd></a> shows why: you can't list the lab directory, but you can read a file in it if you know the name.</li>
+          <li><a class="run" href="../?run=query%20lora"><kbd>query lora</kbd></a>, <a class="run" href="../?run=talk%20lora"><kbd>talk lora</kbd></a>, or <a class="run" href="../?run=ps%20aux"><kbd>ps aux</kbd></a> names today's log: <a class="run" href="../?run=cat%20/lab/laser/log.0922"><kbd>cat /lab/laser/log.0922</kbd></a>. (Today is <a class="run" href="../?run=date"><kbd>date</kbd></a>: SEPT 22.)</li>
+          <li>The log says she saved it as addr.bak: <a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr"><kbd>cp /lab/laser/addr.bak tron.addr</kbd></a></li>
+          <li><a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr&amp;run=service%20start%20tron" title="Runs the cp above, then service start tron"><kbd>service start tron</kbd></a></li>
         </ol>
         <p>There's a second ending for anyone who remembers what Flynn types at the terminal in the lab.</p>
       </details>

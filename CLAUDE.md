@@ -53,6 +53,10 @@ and a fallback, then `t.boot(...)` with its opening.
   (`clearOnCommand`), lowercases input with a filter, answers through
   `say()` (teletype), and matches most queries as whole phrases in `SCRIPT`
   and `fallback()`, not by first word.
+- `?run=COMMAND` (repeatable) runs commands after the opening, and the
+  address then drops it; Alien skips the matrix for one. The reference
+  pages link complete commands this way. History persists in localStorage
+  under each film's `name`.
 - Each film's script sets `window.term` to its terminal, which is handy in
   the console: `await term.submit("ship status")`.
 - Keys: Enter submits (the form's submit, so a phone's send key works),
