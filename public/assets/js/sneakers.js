@@ -9,14 +9,17 @@
   under the box, and Bishop works the letter tiles.
 
   Act 1, here: find the contact that makes the box talk. Most pins read as
-  what they are (ground, power, a clock, address lines counting). The right
-  side's pins mostly read "kind of like the same thing", and the one in the
-  middle of them, pin 31, is the one: on it, the screen runs with formulas.
-  Go past it to the next pin and Whistler wants it back; stay on it and the
-  box is live. Act 2, Carl's black book and dialing out, comes next.
+  what they are (ground, power, a clock, address lines counting). One side's
+  pins mostly read "kind of like the same thing", and one in the middle of
+  them is the decryption pin: on it, the screen runs with formulas. Go past
+  it to the next pin and Whistler wants it back; stay on it and the box is
+  live. Which side, and where on it, is settled by the first pin you touch:
+  the side opposite, so you go through two others on the way, either way
+  around. Act 2, Carl's black book and dialing out, comes next.
 
   window.term is the terminal, and window.bench the box:
-  bench.touch(31) puts the probe on pin 31.
+  bench.touch(n) puts the probe on pin n, and bench.decryption is the pin
+  once it's been placed.
 */
 
 (function () {
@@ -38,8 +41,10 @@
   const story = {
     probes: 0,          // contacts made
     kinds: new Set(),   // kinds of pin Whistler has named
-    keys: new Set(),    // the right side's pins that read alike
+    keys: new Set(),    // the pins that read alike
     sinceKeys: 0,       // contacts since finding the pins that read alike
+    quad: 0,            // the quadrant probed last
+    inQuad: 0,          // contacts in a row in that quadrant
     sawMagic: false,    // went from the decryption pin to another
     live: false,        // the box is talking
     said: new Set(),    // one-time lines already said
@@ -138,23 +143,41 @@
   // right (3), and back along the top (4).
 
   const CHIP = { x: 155, y: 130, size: 150, inset: 14.5, pitch: 11, leg: 14 };
-  const FUNCTIONS = [
-    ["ctrl", "RESET"], ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ["addr", `A${i}`]),
-    ["vcc", "VCC"], ["gnd", "GND"], ["clk", "CLK"],
-    ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ["data", `D${i}`]),
-    ["ctrl", "RD"], ["ctrl", "WR"], ["vcc", "VCC"], ["gnd", "GND"],
-    // the right side: the pin that matters, in the middle of eight that read alike
-    ["gnd", "GND"], ["vcc", "VCC"], ...[0, 1, 2, 3].map((i) => ["key", `K${i}`]),
-    ["magic", "?"], ...[4, 5, 6, 7].map((i) => ["key", `K${i}`]), ["sync", "SYNC"],
-    ["nc", "NC"], ...[8, 9, 10, 11, 12, 13, 14, 15].map((i) => ["addr", `A${i}`]),
-    ["ctrl", "INT"], ["ctrl", "CS"], ["nc", "NC"],
-  ];
+  const SIDES = { 1: "left", 2: "bottom", 3: "right", 4: "top" };
+  const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
-  const PINS = FUNCTIONS.map(([kind, name], i) => {
+  // what each side carries, in order around the chip; the key side is the
+  // one that matters, its decryption pin set among the eight that read alike
+  function sides() {
+    const keys = range(0, 7).map((i) => ["key", `K${i}`]);
+    keys.splice(1 + rand(7), 0, ["magic", "?"]); // never first or last of them
+    return [
+      [["ctrl", "RESET"], ...range(0, 7).map((i) => ["addr", `A${i}`]), ["vcc", "VCC"], ["gnd", "GND"], ["clk", "CLK"]],
+      [...range(0, 7).map((i) => ["data", `D${i}`]), ["ctrl", "RD"], ["ctrl", "WR"], ["vcc", "VCC"], ["gnd", "GND"]],
+      [["gnd", "GND"], ["vcc", "VCC"], ...keys, ["sync", "SYNC"]],
+      [["nc", "NC"], ...range(8, 15).map((i) => ["addr", `A${i}`]), ["ctrl", "INT"], ["ctrl", "CS"], ["nc", "NC"]],
+    ];
+  }
+  const KEY_SIDE = 2; // its place in sides()
+
+  // Nothing's wired until the first contact: then the key side goes
+  // opposite it, and the others follow around in order.
+  let keyQuad = 0;
+  function wire(first) {
+    keyQuad = ((first + 1) % 4) + 1;
+    const layout = sides();
+    const turn = keyQuad - 1 - KEY_SIDE;
+    for (const pin of PINS) {
+      const [kind, name] = layout[(((pin.quad - 1 - turn) % 4) + 4) % 4][(pin.n - 1) % 12];
+      Object.assign(pin, { kind, name });
+    }
+  }
+
+  const PINS = range(0, 47).map((i) => {
     const { x, y, size, inset, pitch, leg } = CHIP;
     const quad = Math.floor(i / 12) + 1;
     const k = i % 12;
-    const pin = { n: i + 1, quad, kind, name };
+    const pin = { n: i + 1, quad, kind: null, name: "" };
     // where the leg sits, and where the probe touches it (near its outer end)
     if (quad === 1) Object.assign(pin, { cx: x - leg + 4, cy: y + inset + k * pitch, leg: [x - leg, y + inset + k * pitch - 2.5, leg, 5] });
     if (quad === 2) Object.assign(pin, { cx: x + inset + k * pitch, cy: y + size + leg - 4, leg: [x + inset + k * pitch - 2.5, y + size, 5, leg] });
@@ -292,14 +315,14 @@
     "g cao=[de]", "e11,13,53=q134w", "1,13,53=q134.998a", "67.8/1124ap[des]", "dqert=00x", "c=q146.67123",
     "o=[a]", "blac=ploo", "cab=(1", "asiu",
   ];
-  const WIDE = 34; // the film's block is about a third of the screen across
+  const WIDE = 40; // about half the screen across
   const LINES_PER_SECOND = 40;
 
   // a few tokens at the left, one pushed toward the right, and whatever
   // runs past the edge cut off
   function formulaLine() {
     const pick = () => FORMULAS[rand(FORMULAS.length)];
-    const left = Array.from({ length: 1 + rand(3) }, pick).join("  ");
+    const left = Array.from({ length: rand(5) ? 2 + rand(2) : 1 }, pick).join("  ");
     const right = pick();
     const gap = Math.max(2, WIDE - left.length - right.length + rand(7) - 2);
     return el("p", { class: "junk" }, (left + " ".repeat(gap) + right).slice(0, WIDE));
@@ -392,6 +415,7 @@
   }
 
   function landed(pin, before) {
+    if (!keyQuad) wire(pin.quad);
     status.textContent = `PIN ${String(pin.n).padStart(2, "0")}  QUAD ${pin.quad}`;
     const bytes = reading(pin);
     setLights(lightsFor(pin, bytes), pin.kind === "magic");
@@ -421,9 +445,16 @@
     }
     if (story.keys.size) story.sinceKeys++;
 
+    // too long in a quadrant with nothing in it, and Whistler wants another
+    if (pin.quad !== story.quad) [story.quad, story.inQuad] = [pin.quad, 0];
+    story.inQuad++;
+    if (pin.quad !== keyQuad && story.inQuad === 5) say(["WHISTLER", "Try another quadrant."]);
+
     if (story.probes === 3 && !story.keys.size) once("one more", ["WHISTLER", "Give me another one."]);
-    if (story.probes === 5) socrates();
-    if (story.probes >= 14 && !story.keys.size) once("nudge", ["WHISTLER", "Work your way around to the right side, Mother."]);
+    // Bishop tries an anagram every so often while the probing goes on
+    if (story.probes === ANAGRAM_AT[0]) anagram("monterey");
+    if (story.probes === ANAGRAM_AT[1]) anagram("socrates");
+    if (story.probes >= 14 && !story.keys.size) once("nudge", ["WHISTLER", `Work your way around to the ${SIDES[keyQuad]} side, Mother.`]);
     if (story.sinceKeys >= 8) once("middle", ["WHISTLER", "Somewhere in the middle of that row, Mother."]);
   }
 
@@ -437,12 +468,12 @@
   const FIRST_READ = {
     gnd: "Ground. Nothing there.",
     vcc: "That's just power.",
-    clk: "Clock. Ticking along.",
-    addr: "It's counting. Address line.",
+    clk: "Clock.",
+    addr: "Looks like an address line.",
     data: "Data. Noise, mostly.",
     ctrl: "High, with a blip now and then. Some kind of strobe.",
     nc: "Nothing. It's floating.",
-    sync: "A pulse, every so often.",
+    sync: "That's a pulse.",
   };
 
   // move the probe to a pin, gliding there unless motion is reduced
@@ -547,7 +578,7 @@
     board.classList.add("live");
     say(
       ["WHISTLER", "Holy cow."],
-      ["MOTHER", "What the hell is this?"],
+      ["WHISTLER", "What the hell is this?"],
       600,
       () => arrange("TOO MANY SECRETS"),
       1400,
@@ -557,13 +588,20 @@
     );
   }
 
-  function socrates() {
-    once("socrates",
-      () => arrange("MY SOCRATES NOTE"),
+  // Bishop's anagrams of SETEC ASTRONOMY, the two he says aloud in the
+  // film, after this many pins
+  const ANAGRAM_AT = [4, 12];
+  const ANAGRAMS = {
+    monterey: ["MONTEREYS COAST", ["BISHOP", "Monterey's coast. Does Monterey's coast mean anything to you guys?"], ["ALL", "No."]],
+    socrates: ["MY SOCRATES NOTE", ["BISHOP", "How about my Socrates note?"], ["CARL", "No."], ["MOTHER", "Uh-uh."]],
+  };
+
+  function anagram(name) {
+    const [phrase, ...lines] = ANAGRAMS[name];
+    once(name,
+      () => { if (!story.live) arrange(phrase); },
       1200,
-      ["BISHOP", "How about my Socrates note?"],
-      ["CARL", "No."],
-      ["MOTHER", "Uh-uh."],
+      ...lines,
       1500,
       () => { if (!story.live) scatter(); },
     );
@@ -634,7 +672,12 @@
     name: "sneakers",
   });
   window.term = t;
-  window.bench = { touch: (n) => goTo(pinAt(n)), lift: () => touch(null), story };
+  window.bench = {
+    touch: (n) => goTo(pinAt(n)),
+    lift: () => touch(null),
+    get decryption() { return PINS.find((pin) => pin.kind === "magic")?.n; },
+    story,
+  };
 
   // the footer's keys, by click or by key
   const ACTIONS = {
@@ -677,13 +720,6 @@
     ], { by: "line", lineDelay: 260 });
     say(
       ["WHISTLER", "All right, Mother. Start anywhere on the big chip."],
-      () => scatter(),
-      1800,
-      () => arrange("MONTEREYS COAST"),
-      1200,
-      ["BISHOP", "Monterey's coast. Does Monterey's coast mean anything to you guys?"],
-      ["ALL", "No."],
-      1500,
       () => { if (!story.live) scatter(); },
     );
   });
