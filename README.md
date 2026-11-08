@@ -4,6 +4,7 @@ Play with recreations of the computer terminals from famous movies:
 
 - **Alien (1979)**: query MU-TH-UR 6000, the Nostromo's computer, through Interface 2037.
 - **TRON (1982)**: sit at Alan's ENCOM terminal and try to start the Tron program.
+- **Sneakers (1992)**: probe Janek's black box on the team's bench until it talks, then dial out.
 
 It's a static site: plain HTML, CSS, and JavaScript in `public/`, with no build
 step. Pushing to `main` deploys `public/` to GitHub Pages at
@@ -29,7 +30,7 @@ public/
   alien/reference/           its command reference
   tron-alan/index.html       Alan's terminal from TRON
   tron-alan/reference/       its command reference
-  sneakers/index.html        Janek's black box from Sneakers (in progress)
+  sneakers/index.html        Janek's black box from Sneakers
   assets/css/site.css        the lobby and the references
   assets/css/terminal.css    shared by the terminals: layout and the CRT look
   assets/css/alien.css       one film's tokens and tweaks
@@ -59,4 +60,4 @@ like `/assets/...` breaks.
 The terminal engine grew out of the xkcd CLI by
 [Chromakode](https://chromakode.com), a jQuery rewrite of CLI2 by Rod
 McFarland. It's since been rewritten without jQuery. *Alien* © 20th Century Fox.
-*TRON* © Walt Disney Productions.
+*TRON* © Walt Disney Productions. *Sneakers* © Universal Pictures.

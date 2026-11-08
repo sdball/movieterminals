@@ -1,7 +1,7 @@
 /*
   The lobby and the command references. Colors are tokens on :root, with the
   dark theme below. Each film's page sets its accent with a class on <body>
-  (or on its card): .alien or .tron.
+  (or on its card): .alien, .tron, or .sneakers.
 */
 
 :root {
@@ -24,6 +24,8 @@
   --alien-phosphor: #8fd6a2;
   --tron: #1c6a93;
   --tron-phosphor: #98d9f7;
+  --sneakers: #85561a;           /* the letter tiles' brass */
+  --sneakers-phosphor: #7ab8ff;  /* the team's monitor, blue on black */
   --accent: var(--ink);
   --phosphor: #e8e8e8;
 
@@ -45,6 +47,7 @@
     --glass-edge: #2c3230;
     --alien: #8fd6a2;
     --tron: #98d9f7;
+    --sneakers: #e7b46c;
   }
 }
 
@@ -61,10 +64,12 @@
   --glass-edge: #2c3230;
   --alien: #8fd6a2;
   --tron: #98d9f7;
+  --sneakers: #e7b46c;
 }
 
 .alien { --accent: var(--alien); --phosphor: var(--alien-phosphor); }
 .tron  { --accent: var(--tron);  --phosphor: var(--tron-phosphor); }
+.sneakers { --accent: var(--sneakers); --phosphor: var(--sneakers-phosphor); }
 
 /* ---------- Base ---------- */
 
@@ -188,6 +193,15 @@ cite { font-style: italic; }
 
 @media (min-width: 760px) {
   .films { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  /* an odd card out spans the row */
+  .film:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+@media (min-width: 1100px) {
+  .films { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+  .film:last-child:nth-child(odd) { grid-column: auto; }
+  /* narrower cards: keep the screens' lines from wrapping */
+  .film .screen { font-size: 0.8125rem; }
 }
 
 .film {
