@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SETEC ASTRONOMY · Sneakers | Movie Terminals</title>
+  <meta name="description" content="Probe Janek's black box from Sneakers (1992) with the team, and find the contact that makes it talk.">
+  <meta name="theme-color" content="#05060a">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Sans:wght@400;600&display=swap">
+  <link rel="stylesheet" href="../assets/css/terminal.css">
+  <link rel="stylesheet" href="../assets/css/sneakers.css">
+  <script src="../assets/js/terminal.js" defer></script>
+  <script src="../assets/js/sneakers.js" defer></script>
+</head>
+
+<body>
+  <main id="room">
+    <section id="monitor-col" aria-label="The team's monitor">
+      <div id="monitor">
+        <header id="titlebar">
+          <span>PROBE MONITOR 2.1</span>
+          <span>SEG 0075</span>
+          <span id="status">NO CONTACT</span>
+        </header>
+        <div id="screen">
+          <div id="display" role="log" aria-label="Monitor output">
+            <noscript>
+              <p>DEVICE NOT RESPONDING<br>JAVASCRIPT REQUIRED</p>
+            </noscript>
+          </div>
+          <form id="inputline" autocomplete="off" hidden>
+            <div class="prompt-lead"></div>
+            <label class="prompt-line"><span class="prompt"></span><span class="field"><input id="command" type="text"
+                  aria-label="Command" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                  enterkeyhint="send"><span id="cursor" aria-hidden="true"></span></span></label>
+          </form>
+        </div>
+        <footer id="keys">
+          <div class="keyrow">
+            <span>TAB/SHIFT-TAB change field</span>
+            <span>+/- change values</span>
+            <button type="button" data-action="next">ALT-N Next</button>
+            <button type="button" data-action="reboot">ALT-R reboot</button>
+          </div>
+          <div class="keyrow">
+            <button type="button" data-action="help">F1 Help</button>
+            <span>F4 Rename</span>
+            <span>F5 (Dis)connect</span>
+            <span>F8 Edit</span>
+            <span>F9 Exit</span>
+          </div>
+        </footer>
+      </div>
+    </section>
+
+    <aside id="bench" aria-label="The bench">
+      <svg id="board" viewBox="0 0 640 500" role="group" aria-label="Janek's black box, open, and a logic probe. The pins of the big chip, U1, are buttons.">
+        <defs>
+          <linearGradient id="can" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#e4e8ee" />
+            <stop offset="0.45" stop-color="#8d949f" />
+            <stop offset="0.55" stop-color="#b9c0ca" />
+            <stop offset="1" stop-color="#5d636d" />
+          </linearGradient>
+          <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#e98aa6" />
+            <stop offset="1" stop-color="#a8435f" />
+          </linearGradient>
+          <linearGradient id="probe-body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#4a4e57" />
+            <stop offset="0.4" stop-color="#25282e" />
+            <stop offset="1" stop-color="#121418" />
+          </linearGradient>
+          <pattern id="legs" width="11" height="8" patternUnits="userSpaceOnUse">
+            <rect x="3" width="5" height="8" fill="#a9b0bb" />
+          </pattern>
+          <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#8a3b2e" /><stop offset="0.1" stop-color="#8a3b2e" />
+            <stop offset="0.1" stop-color="#c0542f" /><stop offset="0.2" stop-color="#c0542f" />
+            <stop offset="0.2" stop-color="#c79a32" /><stop offset="0.3" stop-color="#c79a32" />
+            <stop offset="0.3" stop-color="#4f8a3e" /><stop offset="0.4" stop-color="#4f8a3e" />
+            <stop offset="0.4" stop-color="#3a62a0" /><stop offset="0.5" stop-color="#3a62a0" />
+            <stop offset="0.5" stop-color="#7a4f9a" /><stop offset="0.6" stop-color="#7a4f9a" />
+            <stop offset="0.6" stop-color="#8d8d8d" /><stop offset="0.7" stop-color="#8d8d8d" />
+            <stop offset="0.7" stop-color="#d9d9d9" /><stop offset="0.8" stop-color="#d9d9d9" />
+            <stop offset="0.8" stop-color="#3a3a3a" /><stop offset="0.9" stop-color="#3a3a3a" />
+            <stop offset="0.9" stop-color="#8a3b2e" /><stop offset="1" stop-color="#8a3b2e" />
+          </linearGradient>
+        </defs>
+
+        <!-- the box, open, and its board -->
+        <rect class="tray" x="8" y="8" width="624" height="404" rx="12" />
+        <rect class="pcb" x="36" y="36" width="568" height="336" rx="6" />
+        <g class="traces">
+          <path d="M141 160 H96 V88 H340" />
+          <path d="M141 204 H80 V352 H480" />
+          <path d="M141 248 H112 V330" />
+          <path d="M200 294 V340 H420" />
+          <path d="M250 294 V320 H360" />
+          <path d="M319 170 H346 V110 H360" />
+          <path d="M319 214 H452 V180 H470" />
+          <path d="M319 258 H340 V280 H360" />
+          <path d="M240 116 V70 H360" />
+          <path d="M190 116 V56 H520 V64" />
+          <path d="M456 80 H480" />
+          <path d="M424 138 H470" />
+        </g>
+        <g class="holes">
+          <circle cx="52" cy="52" r="6" /><circle cx="588" cy="52" r="6" />
+          <circle cx="52" cy="356" r="6" /><circle cx="588" cy="356" r="6" />
+        </g>
+        <g class="silk">
+          <text x="155" y="318">U1</text>
+          <text x="360" y="58">U2</text>
+          <text x="480" y="58">U3</text>
+          <text x="360" y="168">U4</text>
+          <text x="470" y="226">U5</text>
+          <text x="490" y="276">J1</text>
+        </g>
+
+        <!-- the little chips -->
+        <g class="dip">
+          <rect class="legs" x="364" y="61" width="88" height="38" />
+          <rect class="top" x="360" y="64" width="96" height="32" rx="2" />
+        </g>
+        <g class="dip">
+          <rect class="legs" x="484" y="61" width="88" height="38" />
+          <rect class="top" x="480" y="64" width="96" height="32" rx="2" />
+        </g>
+        <g class="dip">
+          <rect class="legs" x="364" y="121" width="56" height="34" />
+          <rect class="top" x="360" y="124" width="64" height="28" rx="2" />
+        </g>
+        <g class="can">
+          <rect x="470" y="128" width="100" height="86" rx="4" fill="url(#can)" />
+          <rect x="480" y="138" width="80" height="66" rx="2" fill="none" stroke="#ffffff55" />
+        </g>
+
+        <!-- the daughterboard of lights -->
+        <rect class="lightboard" x="360" y="236" width="112" height="100" rx="3" />
+        <g id="lights"></g>
+
+        <!-- the ribbon cable to the I/O interface -->
+        <rect class="connector" x="488" y="236" width="84" height="22" rx="2" />
+        <path class="ribbon" d="M492 258 H568 V420 H492 Z" fill="url(#ribbon)" />
+
+        <!-- Janek's chip -->
+        <rect class="chip" x="155" y="130" width="150" height="150" rx="4" />
+        <rect class="lid" x="185" y="160" width="90" height="90" rx="2" />
+        <circle class="dot" cx="168" cy="143" r="4" />
+        <g id="pins"></g>
+
+        <!-- a few jumpers -->
+        <g class="wires">
+          <path d="M60 300 C 100 380, 260 400, 340 386" />
+          <path d="M70 120 C 30 200, 40 300, 120 400" />
+          <path d="M600 330 C 560 380, 520 420, 470 432" />
+        </g>
+
+        <!-- the logic probe: its tip is at the group's origin -->
+        <path id="cable" d="" />
+        <g id="probe">
+          <rect class="grip" x="20" y="-16" width="215" height="32" />
+          <line class="needle" x1="0" y1="0" x2="30" y2="0" />
+          <path class="collar" d="M30 -3 L42 -7 L42 7 L30 3 Z" />
+          <rect class="body" x="42" y="-9" width="200" height="18" rx="7" fill="url(#probe-body)" />
+          <circle class="led hi" cx="72" cy="0" r="3.4" />
+          <circle class="led lo" cx="86" cy="0" r="3.4" />
+          <circle class="led pulse" cx="100" cy="0" r="3.4" />
+          <text class="probe-label" x="116" y="3">LOGIC PROBE</text>
+        </g>
+      </svg>
+
+      <div id="tiles" role="img" aria-label="Letter tiles"></div>
+
+      <div id="captions" role="log" aria-live="polite" aria-label="The team"></div>
+    </aside>
+  </main>
+
+  <footer id="credit">
+    <nav>
+      <a href="../">Movie Terminals</a>
+    </nav>
+    <p><cite>Sneakers</cite> &copy; Universal Pictures, 1992. Terminal based on the xkcd CLI by
+      <a href="https://chromakode.com">Chromakode</a>, after CLI2 by Rod McFarland.
+      <a href="https://github.com/sdball/movieterminals">Source</a>.</p>
+  </footer>
+</body>
+
+</html>

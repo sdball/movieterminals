@@ -29,13 +29,16 @@ public/
   alien/reference/           its command reference
   tron-alan/index.html       Alan's terminal from TRON
   tron-alan/reference/       its command reference
+  sneakers/index.html        Janek's black box from Sneakers (in progress)
   assets/css/site.css        the lobby and the references
   assets/css/terminal.css    shared by the terminals: layout and the CRT look
   assets/css/alien.css       one film's tokens and tweaks
   assets/css/tron-alan.css
+  assets/css/sneakers.css
   assets/js/terminal.js      the terminal engine (command line, cursor, history, output)
   assets/js/alien.js         one film's commands
   assets/js/tron-alan.js
+  assets/js/sneakers.js
 scripts/
   serve                      serve public/ locally
   check-links                fail on broken or root-absolute links

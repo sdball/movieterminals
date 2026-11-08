@@ -1,0 +1,323 @@
+/*
+  Sneakers (1992): the team's bench. The monitor on the left is the CRT,
+  blue on black, framed the way the film's probe monitor program frames it;
+  the bench on the right is the room, so the scanlines stay on the glass.
+*/
+
+:root {
+  --screen: #020308;
+  --phosphor: #5aaaf8;
+  --phosphor-bright: #b4dcff;
+  --frame: #3aa6ff;
+  --glow: rgb(90 170 248 / 0.5);
+  --bloom: rgb(90 170 248 / 0.18);
+  --font: "VT323", ui-monospace, Menlo, monospace;
+  --advance: 0.4;           /* VT323's character width, in em */
+  --cols: 78;               /* the Fed's screen is 74 characters wide */
+  --leading: 1.15;
+  --top: 0.5em;
+  --scanlines: 0.28;
+
+  --table: #07080c;
+  --lamp: rgb(255 168 92 / 0.13);
+  --wall: rgb(52 84 210 / 0.16);
+  --caption: #ece6d8;
+  --caption-dim: #9a968c;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+/* ---------- The room: monitor and bench side by side ---------- */
+
+body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background:
+    radial-gradient(ellipse 60% 70% at 92% 8%, var(--lamp), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 70% 100%, var(--wall), transparent 70%),
+    var(--table);
+}
+
+/* the scanlines belong to the glass, not the room */
+body::after { content: none; }
+
+#room {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  gap: clamp(12px, 2vw, 28px);
+  min-height: 0;
+  padding: clamp(10px, 1.6vw, 24px);
+}
+
+#monitor-col {
+  container-type: inline-size;
+  display: flex;
+  min-height: 0;
+}
+
+/* ---------- The monitor ---------- */
+
+#monitor {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  /* --cols across, counting the padding and the frame (3em in all) */
+  font-size: clamp(12px, calc(100cqi / (var(--cols) * var(--advance) + 3)), 32px);
+  line-height: var(--leading);
+  background: var(--screen);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #1a1d26, 0 0 40px rgb(58 166 255 / 0.12);
+  text-shadow: 0 0 0.12em var(--glow), 0 0 0.7em var(--bloom);
+}
+
+#monitor::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 60%, rgb(0 0 0 / var(--vignette)) 100%),
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / var(--scanlines)) 0 1px, transparent 1px 3px);
+}
+
+/* the program's frame: heavy bars top and bottom, rules down the sides */
+#titlebar,
+#keys,
+#screen {
+  border-inline: 0.3em solid var(--frame);
+  box-shadow: none;
+}
+
+#titlebar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0 0.6em;
+  border-block: 0.3em solid var(--frame);
+  color: var(--phosphor);
+  white-space: pre;
+}
+
+#status { color: var(--phosphor-bright); }
+
+#screen {
+  padding: var(--top) 1.2em 0.25em;
+  max-width: none;
+  text-shadow: none;
+  animation: none;
+}
+
+#keys {
+  border-bottom: 0.4em solid var(--frame);
+  font-size: 0.82em;
+}
+
+.keyrow {
+  display: flex;
+  border-top: 0.12em solid var(--frame);
+}
+
+.keyrow > * {
+  flex: 1 1 auto;
+  padding: 0.05em 0.6em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#keys .keyrow:first-child > * + * { border-left: 0.12em solid var(--frame); }
+
+#keys button {
+  all: unset;
+  flex: 1 1 auto;
+  padding: 0.05em 0.6em;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--phosphor-bright);
+}
+
+#keys button:hover,
+#keys button:focus-visible {
+  background: var(--phosphor);
+  color: var(--screen);
+  text-shadow: none;
+}
+
+
+@media (prefers-reduced-motion: no-preference) {
+  #monitor { animation: power-on 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+}
+
+/* ---------- The bench ---------- */
+
+#bench {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4vh, 16px);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  font-family: var(--sans);
+  text-shadow: none;
+}
+
+#board {
+  display: block;
+  width: 100%;
+  height: auto;
+  flex: none;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tray { fill: #14161c; stroke: #2a2e38; stroke-width: 2; }
+.pcb { fill: #0e1b24; stroke: #1b2d38; stroke-width: 2; }
+.traces path { fill: none; stroke: #1d3644; stroke-width: 3; stroke-linejoin: round; }
+.holes circle { fill: #07080b; stroke: #6d6a5f; stroke-width: 2; }
+.silk text { fill: #c6cbd2; opacity: 0.55; font: 600 11px var(--sans); letter-spacing: 0.05em; }
+.dip .legs { fill: url(#legs); }
+.dip .top { fill: url(#pink); stroke: #5e2335; }
+.lightboard { fill: #0a0c10; stroke: #2d3240; stroke-width: 2; }
+.lightboard ~ #lights circle { fill: #3d1a12; }
+.connector { fill: #1c1e24; stroke: #3b3f4a; }
+.chip { fill: #1b1d22; stroke: #34373f; stroke-width: 2; }
+.lid { fill: #23262c; stroke: #3a3e47; }
+.dot { fill: #0d0e11; }
+.wires path { fill: none; stroke: #d9d6cc; stroke-width: 2.2; opacity: 0.75; }
+
+/* the pins: the legs you see, and a bigger target around each */
+.pin { cursor: pointer; outline: none; }
+.pin .leg { fill: #a9b0bb; }
+.pin .hit { fill: transparent; }
+.pin:hover .leg { fill: #e6ebf2; }
+.pin:focus-visible .leg { fill: #ffffff; stroke: var(--frame); stroke-width: 2; }
+.pin.touched .leg { fill: #ffd36b; }
+
+/* the lights on the daughterboard */
+#lights circle.on { fill: #ff5b3a; }
+
+@media (prefers-reduced-motion: no-preference) {
+  #lights circle.on { animation: blink var(--rate, 1.6s) steps(1) infinite; animation-delay: var(--delay, 0s); }
+  #board.live #lights circle.on { --rate: 0.35s; }
+
+  @keyframes blink { 50% { fill: #3d1a12; } }
+}
+
+/* the probe */
+#probe { cursor: grab; }
+#board.dragging #probe { cursor: grabbing; }
+#probe .grip { fill: transparent; }
+#probe .needle { stroke: #d8dce3; stroke-width: 2.4; stroke-linecap: round; }
+#probe .collar { fill: #8b919b; }
+#probe .body { stroke: #050608; stroke-width: 1; }
+#probe .led { fill: #2a2c31; }
+#probe .led.hi.on { fill: #ff4b3e; }
+#probe .led.lo.on { fill: #48e06a; }
+#probe .led.pulse.on { fill: #ffbe3b; }
+#probe .probe-label { fill: #c9cdd4; opacity: 0.7; font: 600 9px var(--sans); letter-spacing: 0.12em; }
+#cable { fill: none; stroke: #101114; stroke-width: 7; stroke-linecap: round; }
+
+@media (prefers-reduced-motion: no-preference) {
+  #probe .led.pulse.on { animation: pulse 0.24s steps(1) infinite; }
+  #probe.wild .led.on { animation: pulse 0.11s steps(1) infinite; }
+  #probe.wild .led.lo.on { animation-delay: 0.05s; }
+
+  @keyframes pulse { 50% { fill: #2a2c31; } }
+}
+
+/* ---------- Letter tiles: Bishop's anagrams ---------- */
+
+#tiles {
+  position: relative;
+  flex: none;
+  height: calc(var(--tile, 32px) * 2.6);
+}
+
+.tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--tile, 32px);
+  height: var(--tile, 32px);
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  background: linear-gradient(160deg, #e9be82, #c99256);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18), 0 2px 4px rgb(0 0 0 / 0.5);
+  color: #23170c;
+  font: 600 calc(var(--tile, 32px) * 0.56) / 1 var(--sans);
+}
+
+.tile sub {
+  position: absolute;
+  right: 0.22em;
+  bottom: 0.2em;
+  font-size: 0.36em;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tile { transition: transform 900ms cubic-bezier(0.3, 0.7, 0.2, 1); }
+}
+
+/* ---------- The team: captions ---------- */
+
+#captions {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.35em;
+  min-height: 6.5em;
+  color: var(--caption);
+  font: 400 clamp(14px, 1.15vw, 18px) / 1.35 var(--sans);
+}
+
+#captions p {
+  display: grid;
+  grid-template-columns: 6.6em minmax(0, 1fr);
+  align-items: baseline;
+  margin: 0;
+}
+#captions p.old { color: var(--caption-dim); }
+
+#captions .who {
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #e7b46c;
+}
+
+#captions p.old .who { color: var(--caption-dim); }
+
+@media (prefers-reduced-motion: no-preference) {
+  #captions p { animation: caption-in 300ms ease-out both; }
+
+  @keyframes caption-in { from { opacity: 0; transform: translateY(0.4em); } }
+}
+
+#credit { color: var(--caption-dim); }
+
+/* ---------- Narrow screens: the bench above, the monitor below ---------- */
+
+@media (max-width: 760px) {
+  #room {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 8px;
+    gap: 8px;
+  }
+
+  #bench { order: -1; max-height: 52dvh; gap: 4px; }
+  #board { max-height: 26dvh; }
+  #tiles { height: calc(var(--tile, 22px) * 2); }
+  #captions { flex: none; min-height: 0; font-size: 13px; }
+  #captions p.old { display: none; }
+  #captions p.old:nth-last-child(2) { display: grid; }
+  #monitor { --cols: 46; }
+  #keys { font-size: 0.75em; }
+}
