@@ -95,7 +95,7 @@
           <tr>
             <td><kbd>file [file]</kbd><br><kbd>strings [file]</kbd><br><kbd>what [file]</kbd></td>
             <td>
-              <p>What a file holds, the text inside a binary, and its SCCS version strings, which say who wrote each part.</p>
+              <p>What a file holds, the text inside a binary, and its SCCS version strings: who wrote each part, and when. Some files the MCP won't let you read.</p>
             </td>
           </tr>
           <tr>
@@ -161,7 +161,7 @@
           <tr>
             <td><a class="run" href="../?run=space_paranoids"><kbd>space_paranoids</kbd></a><br><kbd>matrix_blaster</kbd></td>
             <td>
-              <p>The games in <code>/usr/games</code>, credited to Dillinger. They need an arcade cabinet.</p>
+              <p>The games in <code>/usr/games</code>, credited to Dillinger. They need an arcade cabinet. You can run them, but the MCP has sealed them against reading.</p>
             </td>
           </tr>
           <tr>
@@ -201,7 +201,7 @@
           <li>The log says she saved it as addr.bak: <a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr"><kbd>cp /lab/laser/addr.bak tron.addr</kbd></a></li>
           <li><a class="run" href="../?run=cp%20/lab/laser/addr.bak%20tron.addr&amp;run=service%20start%20tron" title="Runs the cp above, then service start tron"><kbd>service start tron</kbd></a></li>
         </ol>
-        <p>Off the path: <a class="run" href="../?run=cat%20/usr/adm/messages"><kbd>cat /usr/adm/messages</kbd></a> shows who's been dialing in and what the MCP did about it, <a class="run" href="../?run=strings%20/tmp/core"><kbd>strings /tmp/core</kbd></a> shows what CLU was looking for, and <a class="run" href="../?run=what%20/usr/games/space_paranoids"><kbd>what /usr/games/space_paranoids</kbd></a> shows who really wrote it.</p>
+        <p>Off the path: <a class="run" href="../?run=cat%20/usr/adm/messages"><kbd>cat /usr/adm/messages</kbd></a> shows who's been dialing in and what the MCP did about it, and <a class="run" href="../?run=strings%20/tmp/core"><kbd>strings /tmp/core</kbd></a> shows what CLU was looking for.</p>
         <p>There's a second ending for anyone who remembers what Flynn types at the terminal in the lab.</p>
       </details>
     </section>

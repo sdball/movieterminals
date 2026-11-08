@@ -25,8 +25,11 @@
   what he's done.
 
   Off the path, for the curious: /usr/adm/messages (Flynn's dial-ins and
-  CLU's end), /tmp/core (what CLU was looking for), and what or strings on
-  /usr/games/space_paranoids (who really wrote it).
+  CLU's end) and /tmp/core (what CLU was looking for). Who really wrote
+  Space Paranoids is in the games' version strings, but the MCP has sealed
+  them for Dillinger: the games run, and nothing reads them. Proving it is
+  the whole film, so it waits until the MCP is offline: then the games
+  lose guarded and become rwxr-xr-x, and what shows who wrote them.
 
   A second ending, for anyone who types Flynn's lines from the lab scene:
   the MCP takes over, and the laser digitizes you.
@@ -197,9 +200,8 @@
   // ---------- Files ----------
   // Owners and modes work like Unix, so the lab directory (--x for others)
   // and the failing mv fall out of the rules. A guarded file or directory
-  // is the MCP's: touching it raises suspicion.
-
-  const binary = (owner, group, mtime, junk, strings) => file(owner, group, "rwxr-xr-x", mtime, [junk], { binary: true, strings });
+  // is the MCP's: touching it raises suspicion. A guarded file answers with
+  // its sealed lines, if it has them, instead of its contents.
 
   const ADDRESSES = [
     "# tron.addr -- addresses for TRON to watch",
@@ -372,8 +374,14 @@
       encom: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", {
         bin: dir("root", "encom", "rwxr-xr-x", "Aug 02 15:30", programs("ENCOM", "encom", "Aug 02 15:30")),
       }),
+      // run them, but don't read them: execute-only, and the MCP's
       games: dir("root", "root", "rwxr-xr-x", "Jun 04 11:15", Object.fromEntries(Object.entries(GAMES).map(([name, game]) =>
-        [name, binary("dillinger", "encom", "Jun 04 11:15", game.junk, game.strings)]))),
+        [name, file("dillinger", "encom", "rwx--x--x", "Jun 04 11:15", [game.junk], {
+          binary: true,
+          strings: game.strings,
+          guarded: true,
+          sealed: ["LISTING UNAVAILABLE", "SEALED BY MASTER CONTROL FOR E. DILLINGER"],
+        })]))),
     }),
   });
 
@@ -500,7 +508,7 @@
     }
     if (node.guarded) {
       // the MCP's own answer, not a plain Permission denied
-      t.print(...node.lines);
+      t.print(...(node.sealed || node.lines));
       return { guarded: true };
     }
     if (!can(node, "r")) {
@@ -865,7 +873,7 @@
         let what;
         if (n.type === "dir") what = "directory";
         else if (n.type === "dev") what = `character special (${n.major}/${n.minor})`;
-        else if (n.guarded) what = "data";
+        else if (n.guarded || !can(n, "r")) what = "cannot open";
         else if (n.kind) what = n.kind;
         else if (n.binary) what = "executable";
         else if (!n.lines.length) what = "empty";
@@ -890,9 +898,16 @@
     // SCCS version strings: the @(#) lines in a file
     what(t, paths) {
       if (!paths.length) return t.print("usage: what file ...");
+      let guarded = false;
       for (const path of paths) {
         const found = find(path);
-        if (found.error || found.node.type !== "file" || !can(found.node, "r") || found.node.guarded) {
+        if (found.node?.guarded) {
+          guarded = true;
+          t.print(`${path}:`, ...(found.node.sealed || found.node.lines));
+          continue;
+        }
+        if (found.error || found.node.type !== "file" || !can(found.node, "r")) {
+          guarded ||= found.guarded;
           t.print(`${path}: can't open`);
           continue;
         }
@@ -901,6 +916,7 @@
           .filter((line) => line.includes("@(#)"))
           .map((line) => "        " + line.split("@(#)")[1]));
       }
+      if (guarded) return suspect(t);
     },
 
     cp(t, args) {
