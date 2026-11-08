@@ -76,32 +76,239 @@
     return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2)} ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}`;
   }
 
+  // files and directories (see Files, below)
+  const dir = (owner, group, mode, mtime, children, extra) => ({ type: "dir", owner, group, mode, mtime, children, ...extra });
+  const file = (owner, group, mode, mtime, lines, extra) => ({ type: "file", owner, group, mode, mtime, lines, ...extra });
+  const dev = (owner, group, mode, major, minor, extra) => ({ type: "dev", owner, group, mode, mtime: "Jan 12 09:00", major, minor, lines: [], ...extra });
+
   // ---------- Users and groups ----------
   // /etc/passwd and /etc/group are made from these, and id, groups, and
   // query read them. A suspended group still lists its members, but
   // doesn't count for them: that's Dillinger's freeze.
+  //
+  // In 1982 /etc/passwd holds the password hashes themselves (DES crypt:
+  // two characters of salt, eleven of hash), readable by everyone. "*" never
+  // matches, so the MCP, which never logs in, can't. Flynn's account is
+  // "closed", but nobody locked it: his hash is still there, which is how
+  // someone with Group 7 clearance keeps dialing in. The cast's hashes are
+  // real; they're for anyone who cracks them.
+  //
+  // Access groups go by department: group2 is the executives, up to group7,
+  // Software, which Dillinger has frozen. There's no group1: gid 1 is the
+  // MCP's.
+
+  const SUSPENDED = "group 7 (priority access 7), SUSPENDED";
 
   const USERS = {
-    root: { uid: 0, gid: 0, full: "System", home: "/", since: "Last login Tue Jan 12 09:00 on console" },
+    root: { hash: "RqqxOAuYFSQT.", uid: 0, gid: 0, full: "System", home: "/", since: "Last login Tue Jan 12 09:00 on console" },
     mcp: { uid: 1, gid: 1, full: "Master Control Program", home: "/mcp", shell: "", since: "On since Tue Jan 12 09:00", access: "ALL" },
-    gibbs: { uid: 101, gid: 100, full: "Walter Gibbs", home: "/home/gibbs", since: "Last login Fri Sep 17 12:20 on tty2", access: "group 6" },
-    dillinger: { uid: 102, gid: 100, full: "Ed Dillinger", home: "/home/dillinger", since: "On since Wed Sep 22 06:45 on console", access: "group 6" },
-    lora: { uid: 107, gid: 100, full: "Lora Baines", home: "/home/lora", since: "On since Wed Sep 22 07:52 on tty3 (laser bay)", access: "group 7 (priority access 7), SUSPENDED" },
-    alan1: { uid: 108, gid: 100, full: "Alan Bradley", home: HOME, since: "On since Wed Sep 22 08:31 on tty7", access: "group 7 (priority access 7), SUSPENDED" },
-    flynn: { uid: 109, gid: 7, full: "Kevin Flynn", home: "/home/flynn", since: "On since Wed Sep 22 18:11 on ttyd0 (dialup)", access: "group 7, ACCOUNT CLOSED 06/04/82" },
+    gibbs: { hash: "wGpl7nTXNzEig", uid: 101, gid: 100, full: "Walter Gibbs", dept: "Laser Lab", phone: 4500, home: "/home/gibbs", since: "Last login Fri Sep 17 12:20 on tty2", access: "group 6" },
+    dillinger: { hash: "x7uzr8GKPNuI6", uid: 102, gid: 100, full: "Ed Dillinger", dept: "Executive", phone: 1000, home: "/home/dillinger", since: "On since Wed Sep 22 06:45 on console", access: "group 2, group 6" },
+    roy: { hash: "RosfPDhCfgdHY", uid: 104, gid: 100, full: "Roy Abernathy", dept: "Systems", phone: 4300, home: "/home/roy", since: "Last login Wed Sep 22 16:40 on tty5", access: "group 6" },
+    lora: { hash: "Lbciv4XkOnpeY", uid: 107, gid: 100, full: "Lora Baines", dept: "Laser Lab", phone: 4512, home: "/home/lora", since: "On since Wed Sep 22 07:52 on tty3 (laser bay)", access: SUSPENDED },
+    alan1: { hash: "a1EyoPqmaMO0U", uid: 108, gid: 100, full: "Alan Bradley", dept: "Software", phone: 4471, home: HOME, since: "On since Wed Sep 22 08:31 on tty7", access: SUSPENDED },
+    flynn: { hash: "kFbzWOGUNhYXQ", uid: 109, gid: 7, full: "Kevin Flynn", dept: "Software", phone: 4440, home: "/home/flynn", since: "On since Wed Sep 22 18:11 on ttyd0 (dialup)", access: "group 7, ACCOUNT CLOSED 06/04/82" },
   };
 
   const GROUP_TABLE = [
     { name: "root", gid: 0, members: ["root"] },
     { name: "mcp", gid: 1, members: ["mcp"] },
-    { name: "group6", gid: 6, members: ["dillinger", "gibbs"] },
+    { name: "group2", gid: 2, members: ["dillinger"] },
+    { name: "group3", gid: 3, members: [] },
+    { name: "group4", gid: 4, members: [] },
+    { name: "group5", gid: 5, members: [] },
+    { name: "group6", gid: 6, members: ["dillinger", "gibbs", "roy"] },
     { name: "group7", gid: 7, members: ["alan1", "lora"], suspended: true },
-    { name: "encom", gid: 100, members: ["gibbs", "dillinger", "lora", "alan1"] },
+    { name: "encom", gid: 100, members: [] },
     { name: "laser", gid: 110, members: ["lora", "gibbs"] },
   ];
 
   const groupById = (gid) => GROUP_TABLE.find((g) => g.gid === gid);
   const groupByName = (name) => GROUP_TABLE.find((g) => g.name === name);
+
+  // ---------- The staff ----------
+  // ENCOM's other 150 employees, made up the same way on every visit: a
+  // seeded random number generator over names of the period. They fill
+  // /etc/passwd, /etc/group, /home, and last, so grep has something to dig
+  // through. Accounts are a first name and a number, like alan1 (so there's
+  // an alan2).
+
+  function seeded(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let x = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const random = seeded(1982);
+  const pick = (list) => list[Math.floor(random() * list.length)];
+  const between = (lo, hi) => lo + Math.floor(random() * (hi - lo + 1));
+  function shuffle(list) {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  }
+
+  const FIRST = [
+    "Barbara", "Betty", "Bill", "Bob", "Brenda", "Carol", "Charles", "Cheryl", "Chris", "Cindy",
+    "Dan", "Dave", "Debbie", "Dennis", "Diane", "Don", "Donna", "Doug", "Frank", "Gail",
+    "Gary", "Gerald", "Glenn", "Greg", "Harold", "Howard", "Jack", "Jan", "Janet", "Jeff",
+    "Jerry", "Jim", "Joan", "Joe", "John", "Judy", "Karen", "Kathy", "Ken", "Larry",
+    "Laura", "Linda", "Lynn", "Marcia", "Marilyn", "Mark", "Martin", "Mary", "Mike", "Nancy",
+    "Neil", "Pam", "Pat", "Paul", "Peggy", "Phil", "Ray", "Rick", "Rita", "Ron",
+    "Ruth", "Sandy", "Sharon", "Sheila", "Steve", "Sue", "Terry", "Tom", "Vicki", "Wayne",
+    "Wendy", "Stan", "Carl", "Gloria", "Irene", "Lois", "Norman", "Ted",
+  ];
+
+  const LAST = [
+    "Abbott", "Alvarez", "Andersen", "Arnold", "Baker", "Barrett", "Becker", "Bishop", "Boyd", "Brennan",
+    "Burke", "Calloway", "Carver", "Castillo", "Chang", "Chen", "Cohen", "Cole", "Conrad", "Crane",
+    "Delgado", "Dixon", "Doyle", "Dunn", "Ellis", "Engel", "Farrell", "Fischer", "Fleming", "Foster",
+    "Garza", "Gilbert", "Goldberg", "Gordon", "Greene", "Hale", "Hammond", "Harper", "Hayes", "Hoffman",
+    "Holt", "Ito", "Jacobs", "Jensen", "Kaplan", "Keller", "Kim", "Kowalski", "Lambert", "Larsen",
+    "Lee", "Lowell", "Lund", "Mahoney", "Marsh", "Mendoza", "Meyer", "Miller", "Moreno", "Nakamura",
+    "Novak", "Olsen", "Ortega", "Park", "Pierce", "Porter", "Quinn", "Ramirez", "Reed", "Reyes",
+    "Rhodes", "Rossi", "Russo", "Sato", "Schultz", "Shapiro", "Sherman", "Silva", "Snyder", "Sorensen",
+    "Stein", "Sullivan", "Tanaka", "Thornton", "Torres", "Vance", "Vogel", "Wagner", "Walsh", "Watts",
+    "Weiss", "Whitman", "Wong", "Yamamoto", "Young", "Zimmerman",
+  ];
+
+  // [department, access group, how many]
+  const DEPARTMENTS = [
+    ["Executive", "group2", 6],
+    ["Accounting", "group3", 12],
+    ["Legal", "group3", 5],
+    ["Personnel", "group3", 7],
+    ["Marketing", "group4", 14],
+    ["Sales", "group4", 12],
+    ["Facilities", "group4", 8],
+    ["Hardware", "group5", 16],
+    ["Games", "group5", 22],
+    ["Systems", "group6", 14],
+    ["Laser Lab", "group6", 6],
+    ["Software", "group7", 28],
+  ];
+
+  // each one goes in someone's .plan, once
+  const PLANS = [
+    "Out until the 27th.",
+    "Lunch.",
+    "Stop querying me. I'm working.",
+    "Quarterly figures due Friday.",
+    "Ask me about the softball team.",
+    "If I'm not here, I'm at Flynn's.",
+    "Group 7 frozen. Guess I'll finally clean my desk.",
+    "Group 7 frozen. Nobody will say why.",
+    "Who keeps booking the laser at 3 a.m.?",
+    "The MCP asked for my schedule twice today. Why does a computer want my schedule?",
+    "Anyone else's files go missing this week? Mine came back with a note from the MCP.",
+    "Moving to the 6th floor Monday.",
+    "Cafeteria closes at 7. Plan accordingly.",
+    "Testing the new disc game. Do not disturb.",
+    "Light cycle prototype: ask in the games lab.",
+    "Read the security memo. Then read it again.",
+    "Gone fishing. Really.",
+    "Dillinger's office: by appointment only.",
+    "Working late. Again.",
+    "On vacation. The MCP has my number.",
+    "New extension, see the phone list.",
+    "I miss the old system. It never said END OF LINE.",
+    "Remember when Flynn ran the games lab? Those were good days.",
+    "Space Paranoids high score, 3rd floor break room. Come and get it.",
+    "Don't send requests to the MCP after six. It knows.",
+    "Ordered 40 new terminals. Where do they all go?",
+    "The arcade cabinets on 4 need quarters, not memos.",
+    "My terminal printed my name this morning. I didn't type anything.",
+  ];
+
+  const SALT = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const fakeHash = () => Array.from({ length: 13 }, () => pick(SALT)).join("");
+
+  // the days wtmp covers (it begins Fri Sep 17), and before
+  const DAYS = ["Fri Sep 17", "Mon Sep 20", "Tue Sep 21", "Wed Sep 22"];
+  const EARLIER = ["Mon Sep 13", "Tue Sep 14", "Wed Sep 15", "Thu Sep 16"];
+  const hhmm = (minutes) => `${two(Math.floor(minutes / 60))}:${two(minutes % 60)}`;
+
+  // logins for last: { who, tty, from, day (index in DAYS), start, end }
+  // in minutes, end null while logged in
+  const LOGINS = [
+    { who: "flynn", tty: "ttyd0", from: "dialup", day: 3, start: 18 * 60 + 11, end: null },
+    { who: "alan1", tty: "tty7", from: "", day: 3, start: 8 * 60 + 31, end: null },
+    { who: "lora", tty: "tty3", from: "laser bay", day: 3, start: 7 * 60 + 52, end: null },
+    { who: "dillinger", tty: "console", from: "", day: 3, start: 6 * 60 + 45, end: null },
+    { who: "roy", tty: "tty5", from: "", day: 3, start: 16 * 60 + 40, end: 17 * 60 + 55 },
+    { who: "flynn", tty: "ttyd0", from: "dialup", day: 2, start: 23 * 60 + 41, end: 23 * 60 + 46 },
+    { who: "lora", tty: "tty3", from: "laser bay", day: 2, start: 8 * 60 + 38, end: 18 * 60 + 50 },
+    { who: "alan1", tty: "tty7", from: "", day: 2, start: 8 * 60 + 29, end: 17 * 60 + 44 },
+    { who: "dillinger", tty: "console", from: "", day: 2, start: 7 * 60 + 2, end: 19 * 60 + 30 },
+    { who: "flynn", tty: "ttyd0", from: "dialup", day: 2, start: 2 * 60 + 10, end: 2 * 60 + 58 },
+    { who: "flynn", tty: "ttyd0", from: "dialup", day: 1, start: 23 * 60 + 15, end: 23 * 60 + 20 },
+    { who: "lora", tty: "tty3", from: "laser bay", day: 1, start: 8 * 60 + 31, end: 19 * 60 + 6 },
+    { who: "alan1", tty: "tty7", from: "", day: 1, start: 8 * 60 + 30, end: 18 * 60 + 2 },
+    { who: "dillinger", tty: "console", from: "", day: 1, start: 6 * 60 + 58, end: 20 * 60 + 15 },
+    { who: "gibbs", tty: "tty2", from: "", day: 0, start: 12 * 60 + 20, end: 16 * 60 + 5 },
+  ];
+
+  const STAFF_HOMES = {};
+  {
+    const taken = new Set(Object.keys(USERS));
+    const names = new Set(Object.values(USERS).map((u) => u.full));
+    const counts = { alan: 1 };
+    const phones = new Set(Object.values(USERS).map((u) => u.phone));
+    const people = shuffle(DEPARTMENTS.flatMap(([dept, group, n]) => Array.from({ length: n }, () => ({ dept, group }))));
+    const planned = new Map(shuffle(people.slice()).slice(0, PLANS.length).map((p, i) => [p, PLANS[i]]));
+    const ttys = ["tty0", "tty1", "tty4", "tty5", "tty6", "tty8", "tty9", "ttya", "ttyb", "ttyc"];
+    let uid = 110;
+    people.forEach((person, i) => {
+      // two more Alans, after Alan Bradley
+      let first;
+      let full;
+      do {
+        first = i === 23 || i === 97 ? "Alan" : pick(FIRST);
+        full = `${first} ${pick(LAST)}`;
+      } while (names.has(full));
+      names.add(full);
+      const base = first.toLowerCase().slice(0, 7);
+      counts[base] = (counts[base] || 0) + 1;
+      const name = base + counts[base];
+      taken.add(name);
+      let phone;
+      do phone = between(4000, 4999); while (phones.has(phone));
+      phones.add(phone);
+      uid += between(1, 3);
+
+      // the last few days at a terminal, for last; most of ENCOM doesn't
+      // log in every day
+      let latest = null;
+      DAYS.forEach((_, day) => {
+        if (random() > 0.12) return;
+        const start = between(7 * 60 + 30, 15 * 60);
+        const closing = day === 3 ? 18 * 60 + 25 : 21 * 60;
+        const end = Math.min(start + between(20, 9 * 60), between(start + 20, closing));
+        const login = { who: name, tty: pick(ttys), from: "", day, start, end };
+        LOGINS.push(login);
+        latest = login;
+      });
+      const since = latest
+        ? `Last login ${DAYS[latest.day]} ${hhmm(latest.start)} on ${latest.tty}`
+        : `Last login ${pick(EARLIER)} ${hhmm(between(8 * 60, 17 * 60))} on ${pick(ttys)}`;
+      const mtime = latest ? `Sep ${DAYS[latest.day].slice(-2)} ${hhmm(latest.end)}` : `Sep ${between(13, 16)} ${hhmm(between(8 * 60, 17 * 60))}`;
+
+      USERS[name] = {
+        hash: fakeHash(), uid, gid: 100, full, dept: person.dept, phone, home: `/home/${name}`, since,
+        access: person.group === "group7" ? SUSPENDED : `group ${person.group.slice(-1)}`,
+      };
+      groupByName(person.group).members.push(name);
+      if (person.dept === "Laser Lab") groupByName("laser").members.push(name);
+
+      const mode = pick(["rwxr-xr-x", "rwxr-xr-x", "rwx--x--x", "rwx--x--x", "rwx------"]);
+      const plan = planned.get(person);
+      STAFF_HOMES[name] = dir(name, "encom", mode, mtime, plan ? { ".plan": file(name, "encom", "rw-r--r--", mtime, [plan]) } : {});
+    });
+  }
 
   // the groups that count for a user: the login group, then the others
   // they're in that aren't suspended
@@ -117,9 +324,6 @@
   // help lists these, and /bin and /usr/encom/bin hold them. ENCOM's own
   // commands are customizations; everything else is standard issue.
 
-  const dir = (owner, group, mode, mtime, children, extra) => ({ type: "dir", owner, group, mode, mtime, children, ...extra });
-  const file = (owner, group, mode, mtime, lines, extra) => ({ type: "file", owner, group, mode, mtime, lines, ...extra });
-  const dev = (owner, group, mode, major, minor, extra) => ({ type: "dev", owner, group, mode, mtime: "Jan 12 09:00", major, minor, lines: [], ...extra });
 
   const GROUPS = [
     {
@@ -241,7 +445,13 @@
     },
   };
 
-  const passwd = Object.entries(USERS).map(([name, u]) => `${name}:*:${u.uid}:${u.gid}:${u.full}:${u.home}:${u.shell ?? "/bin/sh"}`);
+  // the comment field is BSD's: name, office, phone
+  const passwd = Object.entries(USERS)
+    .sort(([, a], [, b]) => a.uid - b.uid)
+    .map(([name, u]) => {
+      const gecos = [u.full, u.dept, u.phone && `x${u.phone}`].filter(Boolean).join(",");
+      return `${name}:${u.hash || "*"}:${u.uid}:${u.gid}:${gecos}:${u.home}:${u.shell ?? "/bin/sh"}`;
+    });
   const groupFile = GROUP_TABLE.map((g) => `${g.name}:${g.suspended ? "*SUSPENDED*" : "*"}:${g.gid}:${g.members.join(",")}`);
 
   const root = dir("root", "root", "rwxr-xr-x", "Jan 12 09:00", {
@@ -295,6 +505,10 @@
       dillinger: dir("dillinger", "encom", "rwx------", "Sep 22 06:45", {}),
       // Flynn's, until Dillinger had it
       flynn: dir("dillinger", "encom", "rwx------", "Jun 04 11:15", {}),
+      roy: dir("roy", "encom", "rwxr-xr-x", "Sep 22 17:55", {
+        ".plan": file("roy", "encom", "rw-r--r--", "Sep 22 17:55", ["My new control system isn't a mind reader. Say what you mean."]),
+      }),
+      ...STAFF_HOMES,
       gibbs: dir("gibbs", "encom", "rwx--x--x", "Sep 17 12:20", {
         ".plan": file("gibbs", "encom", "rw-r--r--", "Sep 17 12:20", ["In the lab. Knock."]),
       }),
@@ -436,23 +650,30 @@
   const parentOf = (found) => find(join(found.parts.slice(0, -1))).node;
   const baseName = (parts) => parts[parts.length - 1];
 
-  // the shell expands * and ? in a path's last part, if it can read the
-  // directory; otherwise the word stays as typed (so /lab/laser/* finds
-  // nothing, as it should)
+  // the shell expands * and ? anywhere in a path, in directories it can
+  // read; otherwise the word stays as typed (so /lab/laser/* finds nothing,
+  // as it should). /home/*/.plan works.
   function glob(word) {
     if (!/[*?]/.test(word)) return word;
-    const slash = word.lastIndexOf("/");
-    const dirPath = slash < 0 ? "." : word.slice(0, slash) || "/";
-    const prefix = slash < 0 ? "" : word.slice(0, slash + 1);
-    const pattern = word.slice(slash + 1);
-    if (/[*?]/.test(dirPath)) return word;
-    const found = find(dirPath);
-    if (found.error || found.node.type !== "dir" || !can(found.node, "r")) return word;
-    const re = new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$");
-    const names = Object.keys(found.node.children)
-      .filter((name) => re.test(name) && (!name.startsWith(".") || pattern.startsWith(".")))
-      .sort();
-    return names.length ? names.map((name) => prefix + name).join(" ") : word;
+    let paths = [word.startsWith("/") ? "/" : ""];
+    for (const part of word.split("/").filter(Boolean)) {
+      const next = [];
+      for (const base of paths) {
+        if (!/[*?]/.test(part)) {
+          next.push(base + part + "/");
+          continue;
+        }
+        const found = find(base || ".");
+        if (found.error || found.node.type !== "dir" || !can(found.node, "r")) continue;
+        const re = new RegExp("^" + part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$");
+        for (const name of Object.keys(found.node.children).sort()) {
+          if (re.test(name) && (!name.startsWith(".") || part.startsWith("."))) next.push(base + name + "/");
+        }
+      }
+      paths = next;
+    }
+    const matches = paths.map((path) => path.slice(0, -1)).filter((path) => !find(path).error);
+    return matches.length ? matches.join(" ") : word;
   }
 
   // lines that wrap under their text, not their prefix (a log's timestamps,
@@ -1087,33 +1308,25 @@
     },
 
     last(t, [name]) {
-      const LOGINS = [
-        ["flynn", "ttyd0", "dialup", "Wed Sep 22 18:11", "still logged in"],
-        ["alan1", "tty7", "", "Wed Sep 22 08:31", "still logged in"],
-        ["lora", "tty3", "laser bay", "Wed Sep 22 07:52", "still logged in"],
-        ["dillinger", "console", "", "Wed Sep 22 06:45", "still logged in"],
-        ["flynn", "ttyd0", "dialup", "Tue Sep 21 23:41", "- 23:46  (00:05)"],
-        ["lora", "tty3", "laser bay", "Tue Sep 21 08:38", "- 18:50  (10:12)"],
-        ["alan1", "tty7", "", "Tue Sep 21 08:29", "- 17:44  (09:15)"],
-        ["dillinger", "console", "", "Tue Sep 21 07:02", "- 19:30  (12:28)"],
-        ["flynn", "ttyd0", "dialup", "Tue Sep 21 02:10", "- 02:58  (00:48)"],
-        ["flynn", "ttyd0", "dialup", "Mon Sep 20 23:15", "- 23:20  (00:05)"],
-        ["lora", "tty3", "laser bay", "Mon Sep 20 08:31", "- 19:06  (10:35)"],
-        ["alan1", "tty7", "", "Mon Sep 20 08:30", "- 18:02  (09:32)"],
-        ["dillinger", "console", "", "Mon Sep 20 06:58", "- 20:15  (13:17)"],
-        ["gibbs", "tty2", "", "Fri Sep 17 12:20", "- 16:05  (03:45)"],
-      ];
-      t.print(...LOGINS
-        .filter(([who]) => !name || who === name)
-        .map(([who, tty, from, on, until]) => `${who.padEnd(9)} ${tty.padEnd(8)} ${from.padEnd(10)} ${on}   ${until}`),
-      "", "wtmp begins Fri Sep 17 00:00");
+      const lines = LOGINS
+        .filter((l) => !name || l.who === name)
+        .sort((a, b) => b.day - a.day || b.start - a.start)
+        .map((l) => {
+          const until = l.end === null
+            ? "still logged in"
+            : `- ${hhmm(l.end)}  (${hhmm((l.end - l.start + 1440) % 1440)})`;
+          return `${l.who.padEnd(9)} ${l.tty.padEnd(8)} ${l.from.padEnd(10)} ${DAYS[l.day]} ${hhmm(l.start)}   ${until}`;
+        });
+      t.print(...lines, "", "wtmp begins Fri Sep 17 00:00");
     },
 
     query(t, [name]) {
       if (!name) return commands.who(t);
       if (!Object.hasOwn(USERS, name) || name === "root") return t.print(`query: ${name}: no such user.`);
       const u = USERS[name];
-      t.print(`Login: ${name.padEnd(16)} Name: ${u.full}`, `Directory: ${u.home}`, `Access: ${u.access}`, u.since);
+      t.print(`Login: ${name.padEnd(16)} Name: ${u.full}`, `Directory: ${u.home}`);
+      if (u.dept) t.print(`Office: ${u.dept}, x${u.phone}`);
+      t.print(`Access: ${u.access}`, u.since);
       const plan = find(`${u.home}/.plan`);
       if (plan.node && can(plan.node, "r")) t.print("Plan:", ...plan.node.lines);
       else t.print("No Plan.");
