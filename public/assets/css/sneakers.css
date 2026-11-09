@@ -621,7 +621,7 @@ body::after { content: none; }
 .atc .column { fill: none; stroke: #c8341f; stroke-width: 3; }
 .atc .strip { fill: #5050ee; stroke: #e5402a; stroke-width: 3; }
 .atc .split { stroke: #e5402a; stroke-width: 2; }
-.atc .strips text { fill: #ffb46c; font-size: 23px; }
+.atc .strips text { fill: #ffb46c; font-size: 26px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .atc .plane { transition: transform 600ms steps(3); }

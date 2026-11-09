@@ -1427,6 +1427,8 @@
     [["8:18", "90"], ["T/O SJC SUNOL", "ALTAM Ctr"]],
   ];
 
+  const STRIP_X = 580; // where the scope ends and the strips begin
+
   // targets, their data blocks, and where they're headed each sweep
   const PLANES = [
     { tag: "DAL27", alt: "100 21", x: 500, y: 430, dx: -3, dy: -2, color: "green" },
@@ -1439,7 +1441,7 @@
     const project = projection({ x: 0, y: 0, width: 600, height: 600, west: -122.8, north: 38.15, south: 37.15 });
     const scope = svg("g");
     const clip = svg("clipPath", { id: "atc-scope" });
-    clip.append(svg("rect", { x: 0, y: 0, width: 600, height: 600 }));
+    clip.append(svg("rect", { x: 0, y: 0, width: STRIP_X, height: 600 }));
     scope.append(clip);
     const inside = svg("g", { "clip-path": "url(#atc-scope)" });
     const [cx, cy] = project(BAY.fixes.SFO);
@@ -1447,7 +1449,7 @@
     inside.append(
       svg("path", { class: "boundary", d: "M60 70 L240 0" }),
       svg("path", { class: "boundary", d: "M110 170 Q150 400 215 600" }),
-      svg("path", { class: "boundary", d: "M500 8 Q560 300 590 560 L520 600" }),
+      svg("path", { class: "boundary", d: "M490 8 Q548 300 572 560 L505 600" }),
     );
     for (const [name, ...fixes] of BAY.airways) {
       const points = fixes.map((fix) => project(BAY.fixes[fix]));
@@ -1473,18 +1475,24 @@
     });
     scope.append(inside);
 
+    // the strips down the right, as the film has them: big type nearly
+    // filling each one, the split further over on the ACTIVE ones (for the
+    // callsigns), and the column empty below the last
     const strips = svg("g", { class: "strips" });
-    strips.append(svg("rect", { class: "column", x: 608, y: 4, width: 188, height: 592 }));
+    strips.append(svg("rect", { class: "column", x: STRIP_X, y: 4, width: 796 - STRIP_X, height: 592 }));
+    const left = STRIP_X + 5;
+    const right = 791;
     STRIPS.forEach(([[top, bottom], route], i) => {
-      const y = 12 + i * 80;
+      const y = 8 + i * 74;
+      const split = left + (route.length === 1 ? 90 : 60);
       strips.append(
-        svg("rect", { class: "strip", x: 614, y, width: 176, height: 74 }),
-        svg("line", { class: "split", x1: 682, y1: y, x2: 682, y2: y + 74 }),
-        label(648, y + 30, top, "", { "text-anchor": "middle" }),
-        label(648, y + 60, bottom, "", { "text-anchor": "middle" }),
+        svg("rect", { class: "strip", x: left, y, width: right - left, height: 70 }),
+        svg("line", { class: "split", x1: split, y1: y, x2: split, y2: y + 70 }),
+        label((left + split) / 2, y + 31, top, "", { "text-anchor": "middle" }),
+        label((left + split) / 2, y + 60, bottom, "", { "text-anchor": "middle" }),
       );
-      if (route.length === 1) strips.append(label(736, y + 45, route[0], "", { "text-anchor": "middle" }));
-      else strips.append(label(688, y + 30, route[0], ""), label(688, y + 60, route[1], ""));
+      if (route.length === 1) strips.append(label((split + right) / 2, y + 45, route[0], "", { "text-anchor": "middle" }));
+      else strips.append(label(split + 5, y + 31, route[0], ""), label(split + 5, y + 60, route[1], ""));
     });
     art.append(scope, strips);
     placePlanes(call);
