@@ -719,6 +719,9 @@ body::after { content: none; }
   font-size: clamp(12px, min(100cqi / (var(--cols) * var(--advance) + 3), (100dvh - var(--chrome, 150px)) / 27), 30px);
 }
 
+/* an encrypted screen decrypts at a tap */
+:root[data-mode="console"] #monitor[data-encrypted] #screen { cursor: pointer; }
+
 /* fullscreen: the monitor alone, edge to edge (the keyboard still decrypts
    and hangs up) */
 :root.bare #panels,

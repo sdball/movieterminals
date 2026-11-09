@@ -962,6 +962,7 @@
     modem.dataset.line = link ? "connected" : dialing ? "dialing" : "idle";
     hangupButton.disabled = !link;
     decryptButton.disabled = !(link?.ready && !link.decoding && !link.decoded);
+    monitor.toggleAttribute("data-encrypted", !decryptButton.disabled);
   }
 
   // the modem's buttons hand the keyboard back to the command line
@@ -972,6 +973,11 @@
   decryptButton.addEventListener("click", () => {
     decrypt();
     command.focus({ preventScroll: true });
+  });
+
+  // in the console, a tap or click on the encrypted screen decrypts it
+  document.getElementById("screen").addEventListener("click", () => {
+    if (MODE === "console" && !String(getSelection())) decrypt();
   });
 
   // the decryption pin: the probe on it, or in the console, straight to it
@@ -1711,7 +1717,7 @@
       "  dir       the directory: click a number, or Tab to it",
       "  ATDT N    dial number N",
       "  ATH       hang up (or ALT-H, Escape, or the modem's button)",
-      "  ALT-P     decrypt (or the modem's button)",
+      "  ALT-P     decrypt (or the modem's button, or tap the screen)",
       "  fullscreen  the screen alone (ALT-ENTER, Escape to leave;",
       "              there, hang up with ALT-H or ATH)",
       "  reboot    clear the screen (ALT-R)",
