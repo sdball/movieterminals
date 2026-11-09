@@ -709,7 +709,7 @@ body::after { content: none; }
 
 /* the console: the monitor is the whole window, its text centered on the
    glass and sized to fit across and down (the Fed's screen is ~27 lines) */
-:root[data-mode="console"] #room { grid-template-columns: minmax(0, 1fr); }
+:root[data-mode="console"] #room { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 :root[data-mode="console"] #bench,
 :root[data-mode="console"] #keys .probe-keys { display: none; }
 
