@@ -1883,13 +1883,17 @@
   // ---------- The console, fullscreen ----------
   // The monitor alone: no modem, no credits, and the browser's fullscreen
   // where it has one. The browser keeps Escape to leave its fullscreen (and
-  // the page follows), so there Alt-H hangs up.
+  // the page follows), so there Alt-H hangs up. A touch screen only fills
+  // the window: iPad Safari leaves its fullscreen as soon as the on-screen
+  // keyboard comes up, which closed the console the moment it opened.
+
+  const touchFirst = matchMedia("(pointer: coarse)").matches;
 
   function fullscreen(on = !document.documentElement.classList.contains("bare")) {
     document.documentElement.classList.toggle("bare", on);
-    if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+    if (on && !touchFirst && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
     if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    command.focus({ preventScroll: true });
+    if (!touchFirst) command.focus({ preventScroll: true });
   }
 
   document.addEventListener("fullscreenchange", () => {
