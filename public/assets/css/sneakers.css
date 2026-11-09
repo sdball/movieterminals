@@ -382,7 +382,7 @@ body::after { content: none; }
 
 /* [ ] Select Option: the command line inside the brackets */
 .prompt-tail { white-space: pre; }
-#monitor[data-bracket] .field { flex: none; width: calc(var(--chars, 1) * var(--advance) * 1em); min-width: 0; }
+#monitor[data-bracket] .field { flex: none; width: calc(var(--advance) * 1em); min-width: 0; }
 
 /* the drawn screens fill the glass, the ciphertext over them */
 #monitor[data-remote="grid"] #display,

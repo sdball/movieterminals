@@ -706,11 +706,13 @@
   // it, so finding the number is up to you
   let named = null;
 
-  // a click on a number types it in, if the command line is free
+  // a click on a number types it in, if the command line is free; on a
+  // call, the command line is the far end's, so the modem just dials
   function dialFromBook(entry) {
     if (running || form.classList.contains("waiting") || form.classList.contains("held")) return;
     running = true;
-    t.run(`ATDT ${digitsOf(entry.number)}`).finally(() => (running = false));
+    const line = `ATDT ${digitsOf(entry.number)}`;
+    (link ? t.submit(line) : t.run(line)).finally(() => (running = false));
   }
 
   // ---------- The modem ----------
@@ -974,29 +976,50 @@
     t.release();
   }
 
-  // the command line inside the brackets, growing with what's typed
-  const field = form.querySelector(".field");
+  // the command line inside the brackets: one cell, the way a form's
+  // field works, so a key overwrites what's there and the cursor stays on it
   const tail = form.querySelector(".prompt-tail");
   const command = document.getElementById("command");
-  let fitting = 0;
+  let boxed = false;
 
   function bracket(on) {
-    cancelAnimationFrame(fitting);
+    boxed = on;
     if (on) {
       monitor.dataset.bracket = "";
       t.setPrompt(pad(SELECT) + "[");
       tail.textContent = FED.at(-1).slice(SELECT + 2);
-      const fit = () => {
-        field.style.setProperty("--chars", command.value.length + 1);
-        fitting = requestAnimationFrame(fit);
-      };
-      fit();
+      command.value = "";
     } else {
       delete monitor.dataset.bracket;
       tail.textContent = "";
-      field.style.removeProperty("--chars");
     }
   }
+
+  const onCell = () => {
+    if (boxed && (command.selectionStart || command.selectionEnd)) command.setSelectionRange(0, 0);
+  };
+
+  // what's typed lands before the caret, so it's the one to keep
+  command.addEventListener("input", () => {
+    if (boxed && command.value.length > 1) command.value = command.value[(command.selectionStart || 1) - 1];
+    onCell();
+  });
+  document.addEventListener("selectionchange", () => {
+    if (document.activeElement === command) onCell();
+  });
+
+  // Backspace and Delete blank the cell; the history has nothing that fits
+  form.addEventListener("keydown", (e) => {
+    if (!boxed || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      command.value = "";
+      command.dispatchEvent(new Event("input"));
+    } else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
 
   const FED_CHOICES = {
     1: ["BISHOP", "Nobody moves any money."],
