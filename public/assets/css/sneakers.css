@@ -140,6 +140,9 @@ body::after { content: none; }
   color: var(--phosphor-bright);
 }
 
+/* + and -, [ and ]: keys inside a label */
+#keys .probe-keys button { flex: none; padding: 0 0.15em; }
+
 #keys button:hover,
 #keys button:focus-visible {
   background: var(--phosphor);
@@ -603,7 +606,7 @@ body::after { content: none; }
    glass and sized to fit across and down (the Fed's screen is ~27 lines) */
 :root[data-mode="console"] #room { grid-template-columns: minmax(0, 1fr); }
 :root[data-mode="console"] #bench,
-:root[data-mode="console"] #keys [data-action="next"] { display: none; }
+:root[data-mode="console"] #keys .probe-keys { display: none; }
 
 :root[data-mode="console"] #monitor {
   --cols: 80;

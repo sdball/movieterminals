@@ -45,9 +45,10 @@
         </div>
         <footer id="keys">
           <div class="keyrow">
-            <span>TAB/SHIFT-TAB change field</span>
-            <span>+/- change values</span>
-            <button type="button" data-action="next">ALT-N Next</button>
+            <span class="probe-keys"><button type="button" data-action="next" aria-label="Next pin">+</button>/<button type="button" data-action="back" aria-label="Pin before">-</button> change values</span>
+            <span class="probe-keys"><button type="button" data-action="quad-back" aria-label="Quadrant before">[</button>/<button type="button" data-action="quad-next" aria-label="Next quadrant">]</button> change quad</span>
+            <button type="button" class="probe-keys" data-action="next">ALT-N Next</button>
+            <button type="button" class="probe-keys" data-action="back">ALT-B Back</button>
             <button type="button" data-action="reboot">ALT-R reboot</button>
           </div>
           <div class="keyrow">

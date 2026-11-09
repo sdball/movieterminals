@@ -4,7 +4,9 @@
   The page is a workbench. On the left, the team's monitor runs a probe
   monitor program; on the right is the open box. Drag the logic probe onto
   the pins of the big chip, U1 (or click a pin, or Tab to the chip and use
-  the arrow keys), and the monitor shows what that pin reads in hex, the
+  the arrow keys, or on an empty command line + and - for the next pin and
+  the one before, ] and [ for the next quadrant and the one before), and
+  the monitor shows what that pin reads in hex, the
   way Whistler reads it in the film. The team talks in the captions
   under the box, and Bishop works the letter tiles.
 
@@ -569,10 +571,18 @@
     });
   }
 
+  // the pin the probe is gliding to, so steps taken faster than it glides
+  // count from there
+  let aim = null;
+
   function goTo(pin) {
     if (MODE === "console") return Promise.resolve(); // no probe, no box
     if (contact && contact !== pin) touch(null);
-    return glide(pin.cx, pin.cy).then((arrived) => { if (arrived) touch(pin); });
+    aim = pin;
+    return glide(pin.cx, pin.cy).then((arrived) => {
+      if (aim === pin) aim = null;
+      if (arrived) touch(pin);
+    });
   }
 
   // set the probe down on the table
@@ -582,7 +592,17 @@
   }
 
   const pinAt = (n) => PINS[((n - 1) % 48 + 48) % 48];
-  const step = (by) => goTo(current ? pinAt(current.n + by) : PINS[0]);
+  const step = (by) => {
+    const from = aim ?? current;
+    return goTo(from ? pinAt(from.n + by) : PINS[0]);
+  };
+
+  // the first pin of the next quadrant, or the one before
+  function quadStep(by) {
+    const from = aim ?? current;
+    const quad = from ? from.quad : by > 0 ? 0 : 1;
+    return goTo(pinAt((((quad - 1 + by) % 4) + 4) % 4 * 12 + 1));
+  }
 
   // dragging the probe
   let drag = null;
@@ -595,6 +615,7 @@
   probe.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    aim = null;
     stopGlide();
     const p = toBoard(e);
     drag = { dx: p.x - tip.x, dy: p.y - tip.y };
@@ -1662,10 +1683,10 @@
       "  Touch the probe to a pin on U1: drag it there, click a pin,",
       "  or Tab to the chip and use the arrow keys.",
       "",
-      "  next      the next pin (ALT-N)",
-      "  back      the pin before",
+      "  next      the next pin (+ or ALT-N)",
+      "  back      the pin before (- or ALT-B)",
       "  pin N     pin N, 1 to 48",
-      "  quad N    the first pin of quadrant N, 1 to 4",
+      "  quad N    the first pin of quadrant N, 1 to 4 (] and [ step)",
       "  reboot    clear the screen (ALT-R)",
       "",
     ],
@@ -1724,8 +1745,8 @@
     "go back one": () => step(-1),
     "go back": () => step(-1),
     "back one": () => step(-1),
-    "try another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
-    "another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
+    "try another quadrant": () => quadStep(1),
+    "another quadrant": () => quadStep(1),
     "stay in that quadrant": () => goTo(current ? pinAt(current.n % 12 === 0 ? current.n - 11 : current.n + 1) : PINS[0]),
     "punch it in": () => {
       if (MODE !== "story" || !story.live || !named) return false;
@@ -1793,6 +1814,9 @@
   // the footer's keys, by click or by key (the footer's gone during a call)
   const ACTIONS = {
     next: () => step(1),
+    back: () => step(-1),
+    "quad-next": () => quadStep(1),
+    "quad-back": () => quadStep(-1),
     reboot: () => link || dark || finished || commands.reboot(t),
     help: () => link || dark || finished || commands.help(t),
     probe: () => decrypt(),
@@ -1806,6 +1830,7 @@
   document.addEventListener("keydown", (e) => {
     let action = null;
     if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyN") action = "next";
+    else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyB") action = "back";
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyR") action = "reboot";
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyP") action = "probe";
     else if (e.key === "F1") action = "help";
@@ -1813,6 +1838,21 @@
     e.preventDefault();
     ACTIONS[action]();
   });
+
+  // + and -, ] and [, step the probe, so long as they'd type nothing: on
+  // an empty command line, or with the focus outside any text field. This
+  // listens first, so the command line never sees them.
+  const STEPS = { "+": "next", "=": "next", "-": "back", "]": "quad-next", "[": "quad-back" };
+
+  document.addEventListener("keydown", (e) => {
+    const action = STEPS[e.key];
+    if (!action || MODE === "console" || e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
+    const typing = e.target === command ? command.value !== "" : e.target.closest?.("input, textarea, select, [contenteditable]");
+    if (typing) return;
+    e.preventDefault();
+    e.stopPropagation();
+    ACTIONS[action]();
+  }, true);
 
   // ---------- The console's directory ----------
   // Carl's book, typed up: a line a number, each one a button that dials it.
@@ -1833,6 +1873,9 @@
 
   draw(HOME.x, HOME.y);
 
+  // the keys to step the probe, for a keyboard
+  const KEY_HINT = matchMedia("(pointer: coarse)").matches ? [] : ["+/- STEP PIN   [/] STEP QUAD"];
+
   // the sandboxes open with the box already talking
   if (MODE !== "story") {
     wire(1 + rand(4));
@@ -1852,6 +1895,7 @@
         "MODEM ................ OK",
         "",
         "SEG 0075  READY FOR PROBE",
+        ...KEY_HINT,
         "",
       ], { by: "line", lineDelay: 160 });
     });
@@ -1876,6 +1920,7 @@
       "DEVICE ............... NO RESPONSE",
       "",
       "SEG 0075  READY FOR PROBE",
+      ...KEY_HINT,
       "",
     ], { by: "line", lineDelay: 260 });
     say(
