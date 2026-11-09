@@ -140,9 +140,6 @@ body::after { content: none; }
   color: var(--phosphor-bright);
 }
 
-/* + and -, [ and ]: keys inside a label */
-#keys .probe-keys button { flex: none; padding: 0 0.15em; }
-
 #keys button:hover,
 #keys button:focus-visible {
   background: var(--phosphor);
