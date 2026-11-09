@@ -4,7 +4,8 @@ Play with recreations of the computer terminals from famous movies:
 
 - **Alien (1979)**: query MU-TH-UR 6000, the Nostromo's computer, through Interface 2037.
 - **TRON (1982)**: sit at Alan's ENCOM terminal and try to start the Tron program.
-- **Sneakers (1992)**: probe Janek's black box on the team's bench until it talks, then dial out.
+- **Sneakers (1992)**: probe Janek's black box on the team's bench until it talks, then decrypt
+  the places Carl dials. `?mode=bench` and `?mode=console` are sandboxes without the script.
 
 It's a static site: plain HTML, CSS, and JavaScript in `public/`, with no build
 step. Pushing to `main` deploys `public/` to GitHub Pages at

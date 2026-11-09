@@ -51,6 +51,8 @@ body::after { content: none; }
 #monitor-col {
   container-type: inline-size;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-height: 0;
 }
 
@@ -183,6 +185,62 @@ body::after { content: none; }
     100% { opacity: 0; transform: scale(0.4); }
   }
 }
+
+/* ---------- The modem: off the glass, under the monitor ---------- */
+
+#modem {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 8px 6px 14px;
+  border-radius: 6px;
+  background: linear-gradient(#1c1e25, #121318);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 6px 14px rgb(0 0 0 / 0.5);
+  font: 600 11px / 1 var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a8f9c;
+}
+
+#modem .model { margin-right: auto; }
+
+#modem .led { display: inline-flex; align-items: center; gap: 6px; }
+
+#modem .led::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3a1d16;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.5);
+}
+
+#modem:not([data-line="idle"]) [data-led="oh"]::before,
+#modem[data-line="connected"] [data-led="cd"]::before {
+  background: #ff5a3c;
+  box-shadow: 0 0 6px #ff5a3c;
+}
+
+#modem button {
+  all: unset;
+  cursor: pointer;
+  padding: 7px 12px;
+  border-radius: 4px;
+  background: linear-gradient(#3a3d47, #262830);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 0 #0a0b0e;
+  color: #e6e8ee;
+}
+
+#modem #hangup:not(:disabled) { background: linear-gradient(#b8432c, #8a2c1b); }
+#modem #decrypt:not(:disabled) { background: linear-gradient(#2f6fb0, #1f4c80); }
+#modem button:active { transform: translateY(1px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08); }
+#modem button:disabled { cursor: default; background: #1d1f25; box-shadow: none; color: #565a65; }
+#modem button:focus-visible { outline: 2px solid var(--frame); outline-offset: 2px; }
+#modem kbd { margin-left: 6px; font: inherit; font-weight: 400; opacity: 0.7; }
+
+/* the decryption pin is a button only where there's no probe */
+:root:not([data-mode="console"]) #decrypt { display: none; }
 
 /* ---------- The bench ---------- */
 
@@ -531,6 +589,61 @@ body::after { content: none; }
   #bench:has(#book:not([hidden])) #captions { min-height: 4.2em; }
   #bench:has(#book:not([hidden])) #captions p.old:nth-last-child(n+3) { display: none; }
 }
+
+/* ---------- The modes ---------- */
+
+/* the story: the book is Carl's, to look at */
+:root[data-mode="story"] #book .entry { cursor: default; }
+:root[data-mode="story"] #book .entry:hover .number { text-decoration: none; }
+
+/* the bench: no team */
+:root[data-mode="bench"] #captions { display: none; }
+
+/* the console: the monitor is the whole window, its text centered on the
+   glass and sized to fit across and down (the Fed's screen is ~27 lines) */
+:root[data-mode="console"] #room { grid-template-columns: minmax(0, 1fr); }
+:root[data-mode="console"] #bench,
+:root[data-mode="console"] #keys [data-action="next"] { display: none; }
+
+:root[data-mode="console"] #monitor {
+  --cols: 80;
+  --text: calc(var(--cols) * var(--advance) * 1em);
+  font-size: clamp(12px, min(100cqi / (var(--cols) * var(--advance) + 3), (100dvh - 150px) / 27), 30px);
+}
+
+:root[data-mode="console"] #screen,
+:root[data-mode="console"] #monitor[data-remote] #screen {
+  padding-inline: max(1.2em, (100% - var(--text)) / 2);
+}
+
+/* the console's directory, and the story's last screen: lines to pick */
+#display .directory,
+#display .menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#display .dial,
+#display .choice {
+  all: unset;
+  margin-left: 2ch;
+  padding: 0 0.5ch;
+  white-space: pre;
+  cursor: pointer;
+  color: var(--phosphor-bright);
+}
+
+#display .dial:hover,
+#display .dial:focus,
+#display .choice:hover,
+#display .choice:focus {
+  background: var(--phosphor);
+  color: var(--screen);
+  text-shadow: none;
+}
+
+#display .choice .about { opacity: 0.75; }
 
 /* ---------- Narrow screens: the bench above, the monitor below ---------- */
 

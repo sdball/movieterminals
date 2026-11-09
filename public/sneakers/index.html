@@ -13,6 +13,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Sans:wght@400;600&family=Caveat:wght@500;700&display=swap">
   <link rel="stylesheet" href="../assets/css/terminal.css">
   <link rel="stylesheet" href="../assets/css/sneakers.css">
+  <script>
+    // story (the default), bench, or console: set before the first paint
+    document.documentElement.dataset.mode = { bench: "bench", console: "console" }[new URLSearchParams(location.search).get("mode")] || "story";
+  </script>
   <script src="../assets/js/terminal.js" defer></script>
   <script src="../assets/js/sneakers.js" defer></script>
 </head>
@@ -54,6 +58,13 @@
             <span>F9 Exit</span>
           </div>
         </footer>
+      </div>
+      <div id="modem" data-line="idle" role="group" aria-label="The modem">
+        <span class="model" aria-hidden="true">2400 BAUD</span>
+        <span class="led" data-led="oh" title="Off hook">OH</span>
+        <span class="led" data-led="cd" title="Carrier detect">CD</span>
+        <button type="button" id="decrypt" disabled>Decrypt <kbd>Alt-P</kbd></button>
+        <button type="button" id="hangup" disabled>Hang up <kbd>Esc</kbd></button>
       </div>
     </section>
 
@@ -189,6 +200,9 @@
   <footer id="credit">
     <nav>
       <a href="../">Movie Terminals</a>
+      <a href="./">Story</a>
+      <a href="?mode=bench">Bench</a>
+      <a href="?mode=console">Console</a>
     </nav>
     <p><cite>Sneakers</cite> &copy; Universal Pictures, 1992. Terminal based on the xkcd CLI by
       <a href="https://chromakode.com">Chromakode</a>, after CLI2 by Rod McFarland.

@@ -17,17 +17,23 @@
   the side opposite, so you go through two others on the way, either way
   around.
 
-  Act 2: once the box talks, Carl's little black book opens under it.
-  Dial a number from it (click it, or type it, bare or as ATDT 7035550142)
-  and the monitor connects to the far end's screen, encrypted. Put the
-  probe back on the decryption pin and the screen churns into the clear:
-  the Federal Reserve's transfer node, the New England power grid, Bay
-  Area air traffic control, each as the film shows it. The team won't let
-  you touch anything. Bishop turns the monitor off on air traffic
-  control (or hang up first: Escape, ATH, "turn it off"), and the screen
-  goes dark while the team takes it in. Then the captions fade, and the
-  monitor comes back on to the bench.
+  Act 2: once the box talks, Carl's little black book opens under it,
+  and Carl dials the places Whistler asks for, in the film's order. Each
+  answers encrypted; you're Mother, and the probe on the decryption pin
+  churns the screen into the clear: the Federal Reserve's transfer node,
+  the New England power grid, Bay Area air traffic control, each as the
+  film shows it. The team won't let you touch anything. Hang up when
+  you're done looking (the modem's button, Escape, ATH) and Whistler asks
+  Carl for the next. On air traffic control Bishop has it turned off: the
+  screen goes dark while the team takes it in, the captions fade, and the
+  monitor comes back on to a choice of what to play next.
 
+  Two sandboxes go without the team. ?mode=bench opens the box with the
+  pin found and the book yours to dial. ?mode=console is the monitor
+  alone, the whole window, with the book as a directory on the screen and
+  the decryption pin a button on the modem (or Alt-P).
+
+  The mode is <html data-mode>, set by the page before the first paint.
   window.term is the terminal, and window.bench the box:
   bench.touch(n) puts the probe on pin n, bench.decryption is the pin
   once it's been placed, bench.live() skips ahead to the box talking, and
@@ -38,6 +44,8 @@
   "use strict";
 
   const { el, reduceMotion } = Terminal;
+  const MODE = document.documentElement.dataset.mode || "story";
+  const silent = MODE !== "story"; // the sandboxes have no team
   const NS = "http://www.w3.org/2000/svg";
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const rand = (n) => Math.floor(Math.random() * n);
@@ -88,6 +96,7 @@
   }
 
   function say(...items) {
+    if (silent) return queue;
     queued++;
     queue = queue.then(async () => {
       for (const item of items) {
@@ -439,8 +448,8 @@
     showStatus();
     const bytes = reading(pin);
     setLights(lightsFor(pin, bytes), pin.kind === "magic");
-    // on a call, the screen is the far end's; shut off, it's nobody's
-    if (dark) return;
+    // on a call, the screen is the far end's; shut off or done, it's nobody's
+    if (dark || finished) return;
     if (link || dialing) return onTheLine(pin);
     if (pin.kind === "magic") startNoise();
     else showRows(pin, bytes);
@@ -489,7 +498,8 @@
   }
 
   function showStatus() {
-    status.textContent = contact ? `PIN ${String(contact.n).padStart(2, "0")}  QUAD ${contact.quad}` : "NO CONTACT";
+    if (MODE === "console") status.textContent = "ON LINE";
+    else status.textContent = contact ? `PIN ${String(contact.n).padStart(2, "0")}  QUAD ${contact.quad}` : "NO CONTACT";
   }
 
   const FIRST_READ = {
@@ -536,6 +546,7 @@
   }
 
   function goTo(pin) {
+    if (MODE === "console") return Promise.resolve(); // no probe, no box
     if (contact && contact !== pin) touch(null);
     return glide(pin.cx, pin.cy).then((arrived) => { if (arrived) touch(pin); });
   }
@@ -619,14 +630,19 @@
 
   // ---------- The box talks ----------
 
-  function goLive() {
-    if (story.live) return;
+  // the box is live, and the decryption pin marked
+  function liven() {
     story.live = true;
     board.classList.add("live");
     // a dab of paint off the end of the pin, so Mother won't lose it again
     const magic = PINS.find((pin) => pin.kind === "magic");
     const [dx, dy] = { 1: [-9, 0], 2: [0, 9], 3: [9, 0], 4: [0, -9] }[magic.quad];
     magic.node.append(svg("circle", { class: "dab", cx: magic.cx + dx, cy: magic.cy + dy, r: 3 }));
+  }
+
+  function goLive() {
+    if (story.live) return;
+    liven();
     say(
       ["WHISTLER", "Holy cow."],
       ["WHISTLER", "What the hell is this?"],
@@ -646,6 +662,7 @@
       ["MOTHER", "Yeah, sure. Good luck."],
       ["CARL", "Nine hundred billion a day goes through there."],
       ["WHISTLER", "That'll do. Punch it in."],
+      () => carlDials("fed"),
       ["CARL", "You won't get in, it's encrypted."],
     );
   }
@@ -673,14 +690,17 @@
   // Two pages, a name and a number each. Every number is fictional
   // (555-01xx), with 1992's area codes: Culpeper was 703 until 1995, and
   // Oakland, where the Bay Area's approach control sat, 510 since 1991.
-
+  //
+  // kind: a target answers with a screen to decrypt (TARGETS has it), a
+  // voice answers and hangs up, a bbs is busy. A new target is an entry
+  // here and one in TARGETS.
   const BOOK = [
-    { id: "fed", page: 0, name: "Fed Reserve transfer node", note: "Culpeper VA", number: "703-555-0142" },
-    { id: "pizza", page: 0, name: "Gino's Pizza", note: "open til 2", number: "415-555-0117" },
-    { id: "grid", page: 0, name: "Nat'l power grid", note: "DOE", number: "202-555-0128" },
-    { id: "mom", page: 1, name: "Mom", note: "call Sun!", number: "415-555-0163" },
-    { id: "atc", page: 1, name: "Air traffic control", note: "Bay TRACON", number: "510-555-0174" },
-    { id: "bbs", page: 1, name: "Cheshire Cat BBS", note: "2400 8N1", number: "415-555-0189" },
+    { id: "fed", kind: "target", page: 0, name: "Fed Reserve transfer node", note: "Culpeper VA", number: "703-555-0142" },
+    { id: "pizza", kind: "voice", page: 0, name: "Gino's Pizza", note: "open til 2", number: "415-555-0117" },
+    { id: "grid", kind: "target", page: 0, name: "Nat'l power grid", note: "DOE", number: "202-555-0128" },
+    { id: "mom", kind: "voice", page: 1, name: "Mom", note: "call Sun!", number: "415-555-0163" },
+    { id: "atc", kind: "target", page: 1, name: "Air traffic control", note: "Bay TRACON", number: "510-555-0174" },
+    { id: "bbs", kind: "bbs", page: 1, name: "Cheshire Cat BBS", note: "2400 8N1", number: "415-555-0189" },
   ];
   const digitsOf = (text) => text.replace(/\D/g, "");
 
@@ -702,17 +722,34 @@
     book.hidden = false;
   }
 
-  // the place Carl named last, for "punch it in"; the book doesn't mark
-  // it, so finding the number is up to you
+  // the place Carl named last, for "punch it in"
   let named = null;
 
   // a click on a number types it in, if the command line is free; on a
-  // call, the command line is the far end's, so the modem just dials
+  // call, the command line is the far end's, so the modem just dials. In
+  // the story, the book is Carl's.
   function dialFromBook(entry) {
+    if (MODE === "story") return carlsBook();
     if (running || form.classList.contains("waiting") || form.classList.contains("held")) return;
     running = true;
     const line = `ATDT ${digitsOf(entry.number)}`;
     (link ? t.submit(line) : t.run(line)).finally(() => (running = false));
+  }
+
+  // In the story, Carl does the dialing, when Whistler asks
+  let carlAtKeys = false;
+
+  function carlDials(id) {
+    if (dialing || link?.target.id === id) return;
+    const entry = BOOK.find((e) => e.id === id);
+    carlAtKeys = true;
+    t.run(`ATDT ${digitsOf(entry.number)}`).finally(() => (carlAtKeys = false));
+  }
+
+  function carlsBook() {
+    beep();
+    once("carl's book", ["CARL", "Hey. That's my book, Mother."]);
+    return true;
   }
 
   // ---------- The modem ----------
@@ -742,6 +779,7 @@
   }
 
   async function dial(t, digits) {
+    if (MODE === "story" && story.live && !carlAtKeys) return carlsBook();
     if (link) hangUp(t, false);
     stopOutput();
     t.clear();
@@ -753,7 +791,8 @@
     }
     const entry = lookUp(digits);
     dialing = true;
-    putDown();
+    modemSync();
+    if (MODE !== "console") putDown();
     try {
       status.textContent = "DIALING";
       await t.sleep(500 + digits.length * 110);
@@ -762,12 +801,12 @@
         return;
       }
       status.textContent = "RINGING";
-      const rings = entry ? { voice: 2, bbs: 1 }[KINDS[entry.id]] ?? 1 : 4;
+      const rings = entry ? { voice: 2, bbs: 1 }[entry.kind] ?? 1 : 4;
       for (let ring = 0; ring < rings; ring++) {
         t.print("RINGING");
         await t.sleep(1300);
       }
-      const kind = entry && KINDS[entry.id];
+      const kind = entry?.kind;
       if (kind === "voice" || !entry) {
         t.print("NO CARRIER", "");
         if (entry) once(entry.id, ...ANSWERED[entry.id]);
@@ -780,11 +819,13 @@
       await connect(t, TARGETS[entry.id]);
     } finally {
       dialing = false;
-      if (!link) showStatus();
+      modemSync();
+      if (!link) {
+        showStatus();
+        if (MODE === "console") showDirectory();
+      }
     }
   }
-
-  const KINDS = { fed: "target", grid: "target", atc: "target", pizza: "voice", mom: "voice", bbs: "bbs" };
   const ANSWERED = {
     pizza: [["CARL", "That's the pizza place."], ["MOTHER", "Get a large. Pepperoni."]],
     mom: [["CARL", "Oh, no. That was my mom."], ["MOTHER", "Call her back, Carl. Sunday."]],
@@ -808,6 +849,7 @@
   // the far end answers: its screen takes over the monitor, encrypted
   async function connect(t, target) {
     const call = (link = { target, ready: false, decoding: false, decoded: false });
+    modemSync();
     monitor.dataset.remote = target.id;
     t.setPrompt("");
     t.clear();
@@ -815,6 +857,7 @@
     await (target.id === "fed" ? fedCipher(t) : streamCipher(t, call));
     if (link !== call) return;
     call.ready = true;
+    modemSync();
     target.connected();
     // if nobody's on that last contact in a while, Whistler says so
     call.nudge = setTimeout(() => {
@@ -830,6 +873,7 @@
       return true;
     }
     link = null;
+    modemSync();
     clearTimeout(call.nudge);
     clearInterval(call.sweep);
     bracket(false);
@@ -837,9 +881,40 @@
     t.setPrompt("> ");
     t.clear();
     showStatus();
-    if (call.target.id === "atc" && call.decoded) ending(t);
-    else if (carrier) t.print("NO CARRIER", "");
+    if (MODE === "story" && call.target.id === "atc" && call.decoded) return ending(t), true;
+    if (!carrier) return true;
+    t.print("NO CARRIER", "");
+    if (MODE === "console" && !dialing) showDirectory(); // or dial() will
+    if (MODE === "story") afterCall(call);
     return true;
+  }
+
+  // the modem's lights and buttons follow the line
+  const modem = document.getElementById("modem");
+  const hangupButton = document.getElementById("hangup");
+  const decryptButton = document.getElementById("decrypt");
+
+  function modemSync() {
+    modem.dataset.line = link ? "connected" : dialing ? "dialing" : "idle";
+    hangupButton.disabled = !link;
+    decryptButton.disabled = !(link?.ready && !link.decoding && !link.decoded);
+  }
+
+  // the modem's buttons hand the keyboard back to the command line
+  hangupButton.addEventListener("click", () => {
+    hangUp(t);
+    command.focus({ preventScroll: true });
+  });
+  decryptButton.addEventListener("click", () => {
+    decrypt();
+    command.focus({ preventScroll: true });
+  });
+
+  // the decryption pin: the probe on it, or in the console, straight to it
+  function decrypt() {
+    if (MODE === "console") return decode();
+    const magic = PINS.find((pin) => pin.kind === "magic");
+    if (story.live && magic) goTo(magic);
   }
 
   // the probe while on a call: that last contact decrypts, the rest don't
@@ -915,13 +990,19 @@
     const call = link;
     if (!call?.ready || call.decoding || call.decoded) return;
     call.decoding = true;
+    modemSync();
     clearTimeout(call.nudge);
     call.target.decoding?.();
     await (call.target.id === "fed" ? decodeFed(call) : decodeArt(call));
     if (link !== call) return;
     call.decoded = true;
+    modemSync();
     story.cracked.add(call.target.id);
     call.target.decoded(call);
+    // a while on a decrypted screen, and Bishop wants to move on
+    if (call.target.id !== "atc") call.nudge = setTimeout(() => {
+      if (link === call) once(`${call.target.id} done`, ["BISHOP", "Okay, Mother. Hang it up."]);
+    }, 30000);
   }
 
   // ---------- The Federal Reserve ----------
@@ -1241,6 +1322,7 @@
       return;
     }
     if (act === "EXIT") return hangUp(t);
+    if (silent) return beep();
     say(GRID_OBJECTIONS[act]);
   }
 
@@ -1361,12 +1443,32 @@
   // ---------- The three places, and what the team says ----------
 
   const calling = (id) => link?.target.id === id;
+  const ORDER = ["fed", "grid", "atc"];
   const NEXT = { fed: "Federal Reserve Transfer Node.", grid: "National power grid?", atc: "Air traffic control system." };
+  let asking = false; // Whistler's asking Carl for the next place
+
+  // You hang up when you've seen enough, and the story moves along: Whistler
+  // asks Carl for the next place, and Carl punches it in. Hang up before
+  // it's decrypted, and Carl calls it back.
+  function afterCall(call) {
+    if (!call.decoded) return say(["WHISTLER", "Carl. Get it back."], () => carlDials(call.target.id));
+    whatElse();
+  }
 
   function whatElse() {
-    const next = ["fed", "grid", "atc"].find((id) => !story.cracked.has(id));
-    if (!next) return [];
-    return [["WHISTLER", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"], () => { named = next; }, ["CARL", NEXT[next]]];
+    const next = ORDER.find((id) => !story.cracked.has(id));
+    if (!next || asking) return;
+    asking = true;
+    say(
+      ["WHISTLER", story.cracked.size === 1 ? "Carl, what else you got?" : "Carl, what else?"],
+      () => { named = next; },
+      ["CARL", NEXT[next]],
+      ["WHISTLER", "Punch it in."],
+      () => {
+        asking = false;
+        if (!link && !dialing) carlDials(next);
+      },
+    );
   }
 
   const TARGETS = {
@@ -1374,7 +1476,7 @@
       id: "fed",
       connected: () => once("fed connected", ["CARL", "See?"], 400, () => (calling("fed") && !link.decoding ? ["WHISTLER", "Mother. That last contact."] : null)),
       decoded: () => once("fed decoded", ["WHISTLER", "Take a look at this, boys."], ["WHISTLER", "Anybody want to shut down the Federal Reserve?"],
-        ["CREASE", "Hey, hey, hey! Don't screw around with that thing!"], ...whatElse()),
+        ["CREASE", "Hey, hey, hey! Don't screw around with that thing!"]),
       choose(line) {
         if (!Object.hasOwn(FED_CHOICES, line)) return false;
         say(FED_CHOICES[line]);
@@ -1386,7 +1488,7 @@
       draw: drawGrid,
       connected: () => {},
       decoding: () => once("grid decoding", ["MOTHER", "Okay, here we come..."], ["MOTHER", "Rolling."]),
-      decoded: () => once("grid decoded", ["WHISTLER", "Wow."], ["MOTHER", "Unbelievable."], ["WHISTLER", "Anybody want to black out New England?"], ...whatElse()),
+      decoded: () => once("grid decoded", ["WHISTLER", "Wow."], ["MOTHER", "Unbelievable."], ["WHISTLER", "Anybody want to black out New England?"]),
     },
     atc: {
       id: "atc",
@@ -1416,8 +1518,9 @@
   };
 
   // off, at last: the monitor goes dark while the team takes it in, the
-  // captions fade, and the monitor comes back on to the bench
+  // captions fade, and the monitor comes back on to a choice of what next
   let dark = false;
+  let finished = false;
 
   function ending(t) {
     dark = true;
@@ -1425,18 +1528,14 @@
     t.hold();
     monitor.classList.add("off");
     putDown();
-    const first = !story.said.has("ending");
-    story.said.add("ending");
     say(
       800,
-      ...(first ? [
-        ["CARL", "So it's a code breaker."],
-        ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
-        1600,
-        ["BISHOP", "No more secrets."],
-        () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
-        2600,
-      ] : [1200]),
+      ["CARL", "So it's a code breaker."],
+      ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
+      1600,
+      ["BISHOP", "No more secrets."],
+      () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
+      2600,
       fadeCaptions,
       () => powerOn(t),
     );
@@ -1450,19 +1549,46 @@
     captions.classList.remove("fading");
   }
 
-  // the tube warms up again, the way it did when the page opened
+  // the tube warms up again, the way it did when the page opened, to a
+  // choice: the story again, or one of the sandboxes
+  const CHOICES = [
+    ["./", "PLAY AGAIN", ""],
+    ["?mode=bench", "BENCH", "sandbox mode with decryption pin already found"],
+    ["?mode=console", "CONSOLE", "sandbox mode with fullscreen console decryption"],
+  ];
+
   function powerOn(t) {
     dark = false;
+    finished = true;
     monitor.classList.remove("off");
     monitor.style.animation = "none";
     void monitor.offsetWidth;
     monitor.style.animation = "";
     stopOutput();
     t.clear();
-    t.print("PROBE MONITOR 2.1", "", "SEG 0075  READY FOR PROBE", "");
-    showStatus();
-    if (contact) landed(contact, null);
-    t.release();
+    status.textContent = "NO MORE SECRETS";
+    const choices = el("nav", { class: "menu", "aria-label": "Play next" },
+      ...CHOICES.map(([href, name, about]) => el("a", { class: "choice", href }, about ? name.padEnd(12) : name, about && el("span", { class: "about" }, about))));
+    t.print("PROBE MONITOR 2.1", "", "NO MORE SECRETS.", "", choices, "");
+    roving(choices, ".choice");
+    choices.querySelector(".choice").focus({ preventScroll: true });
+  }
+
+  // arrow keys up and down a list of links or buttons, one Tab stop for all
+  function roving(list, selector) {
+    const items = [...list.querySelectorAll(selector)];
+    items.forEach((item, i) => (item.tabIndex = i ? -1 : 0));
+    list.addEventListener("keydown", (e) => {
+      const at = items.indexOf(e.target);
+      if (at < 0) return;
+      const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: items.length - 1 }[e.key];
+      if (to == null) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const item = items[(to + items.length) % items.length];
+      items.forEach((other) => (other.tabIndex = other === item ? 0 : -1));
+      item.focus();
+    });
   }
 
   // what's typed during a call goes to the far end, or hangs up, or dials
@@ -1474,7 +1600,7 @@
     const [name, ...args] = line.split(" ");
     if (["next", "back", "pin", "quad"].includes(name)) return commands[name](quiet, args) || true;
     if (Object.hasOwn(PHRASES, line)) return PHRASES[line](t) || true;
-    if (link.decoded && link.target.choose?.(line)) return true;
+    if (link.decoded && !silent && link.target.choose?.(line)) return true;
     beep();
     return true;
   }
@@ -1488,41 +1614,64 @@
 
   // ---------- Commands ----------
 
+  const HELP = {
+    probe: [
+      "  Touch the probe to a pin on U1: drag it there, click a pin,",
+      "  or Tab to the chip and use the arrow keys.",
+      "",
+      "  next      the next pin (ALT-N)",
+      "  back      the pin before",
+      "  pin N     pin N, 1 to 48",
+      "  quad N    the first pin of quadrant N, 1 to 4",
+      "  reboot    clear the screen (ALT-R)",
+      "",
+    ],
+    story: [
+      "  Carl dials. Hang up with the modem's button, ATH, or Escape.",
+    ],
+    bench: [
+      "  ATDT N    dial number N, or click one in Carl's book",
+      "  ATH       hang up (or Escape, or the modem's button)",
+      "  ALT-P     the probe to the decryption pin",
+    ],
+    console: [
+      "  dir       the directory: click a number, or Tab to it",
+      "  ATDT N    dial number N",
+      "  ATH       hang up (or Escape, or the modem's button)",
+      "  ALT-P     decrypt (or the modem's button)",
+      "  reboot    clear the screen (ALT-R)",
+    ],
+  };
+
+  // the probe's commands, which the console has no probe for
+  const probing = (run) => (t, args) => (MODE === "console" ? t.print("NO PROBE") : run(t, args));
+
   const commands = {
     help(t) {
-      t.print(
-        "PROBE MONITOR 2.1",
-        "",
-        "  Touch the probe to a pin on U1: drag it there, click a pin,",
-        "  or Tab to the chip and use the arrow keys.",
-        "",
-        "  next      the next pin (ALT-N)",
-        "  back      the pin before",
-        "  pin N     pin N, 1 to 48",
-        "  quad N    the first pin of quadrant N, 1 to 4",
-        "  reboot    clear the screen (ALT-R)",
-        "",
-        "  ATDT N    dial number N, or click one in Carl's book",
-        "  ATH       hang up (or Escape)",
-        "",
-      );
+      t.print("PROBE MONITOR 2.1", "", ...(MODE === "console" ? [] : HELP.probe), ...HELP[MODE], "");
     },
-    next: () => step(1),
-    back: () => step(-1),
-    pin(t, [n]) {
+    next: probing(() => step(1)),
+    back: probing(() => step(-1)),
+    pin: probing((t, [n]) => {
       if (!(+n >= 1 && +n <= 48)) return t.print("PIN 1 TO 48");
       return goTo(pinAt(+n));
-    },
-    quad(t, [n]) {
+    }),
+    quad: probing((t, [n]) => {
       if (!(+n >= 1 && +n <= 4)) return t.print("QUAD 1 TO 4");
       return goTo(pinAt((n - 1) * 12 + 1));
-    },
+    }),
     reboot(t) {
       stopOutput();
       t.clear();
     },
+    dir(t) {
+      if (MODE !== "console") return t.print("Bad command or file name");
+      t.clear();
+      showDirectory();
+    },
   };
   commands.clear = commands.reboot;
+  commands.directory = commands.dir;
 
   // what the team says in the film works too
   const PHRASES = {
@@ -1535,20 +1684,23 @@
     "try another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
     "another quadrant": () => goTo(pinAt(current ? Math.ceil(current.n / 12) * 12 + 1 : 1)),
     "stay in that quadrant": () => goTo(current ? pinAt(current.n % 12 === 0 ? current.n - 11 : current.n + 1) : PINS[0]),
-    "punch it in": (t) => {
-      const entry = BOOK.find((e) => e.id === named);
-      return story.live && entry ? dial(t, digitsOf(entry.number)) : false;
+    "punch it in": () => {
+      if (MODE !== "story" || !story.live || !named) return false;
+      if (!link && !dialing) carlDials(named);
+      return true;
     },
-    "Carl what else you got": () => carlWhatElse(),
-    "what else you got": () => carlWhatElse(),
-    "Carl what else": () => carlWhatElse(),
-    "what else": () => carlWhatElse(),
+    "carl what else you got": (t) => carlWhatElse(t),
+    "what else you got": (t) => carlWhatElse(t),
+    "carl what else": (t) => carlWhatElse(t),
+    "what else": (t) => carlWhatElse(t),
   };
 
-  function carlWhatElse() {
-    if (!story.live) return false;
-    const next = whatElse();
-    say(...(next.length ? next.slice(1) : [["CARL", "That's everything I've got."]]));
+  // on a decrypted screen, it hangs up and moves along, as hanging up does
+  function carlWhatElse(t) {
+    if (MODE !== "story" || !story.live || (link && !link.decoded)) return false;
+    if (link) return hangUp(t);
+    if (ORDER.every((id) => story.cracked.has(id))) say(["CARL", "That's everything I've got."]);
+    else whatElse();
     return true;
   }
 
@@ -1598,8 +1750,9 @@
   // the footer's keys, by click or by key (the footer's gone during a call)
   const ACTIONS = {
     next: () => step(1),
-    reboot: () => link || dark || commands.reboot(t),
-    help: () => link || dark || commands.help(t),
+    reboot: () => link || dark || finished || commands.reboot(t),
+    help: () => link || dark || finished || commands.help(t),
+    probe: () => decrypt(),
   };
 
   document.getElementById("keys").addEventListener("click", (e) => {
@@ -1611,18 +1764,66 @@
     let action = null;
     if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyN") action = "next";
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyR") action = "reboot";
+    else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyP") action = "probe";
     else if (e.key === "F1") action = "help";
     if (!action) return;
     e.preventDefault();
     ACTIONS[action]();
   });
 
+  // ---------- The console's directory ----------
+  // Carl's book, typed up: a line a number, each one a button that dials it.
+
+  function showDirectory() {
+    const list = el("div", { class: "directory", role: "group", "aria-label": "Directory" },
+      ...BOOK.map((entry) => {
+        const line = el("button", { type: "button", class: "dial", "aria-label": `${entry.name}, ${entry.note}: ${entry.number}` },
+          `${entry.name.toUpperCase().padEnd(28)}${entry.note.toUpperCase().padEnd(13)}${entry.number}`);
+        line.addEventListener("click", () => dialFromBook(entry));
+        return line;
+      }));
+    roving(list, ".dial");
+    t.print("DIRECTORY", "", list, "");
+  }
+
   // ---------- The opening ----------
 
   draw(HOME.x, HOME.y);
-  arrange("SETEC ASTRONOMY");
 
-  t.boot(async (t) => {
+  // the sandboxes open with the box already talking
+  if (MODE !== "story") {
+    wire(1 + rand(4));
+    liven();
+    document.title = "TOO MANY SECRETS · Sneakers | Movie Terminals";
+  }
+
+  if (MODE === "bench") {
+    requestAnimationFrame(() => arrange("TOO MANY SECRETS"));
+    openBook();
+    t.boot(async (t) => {
+      await t.type([
+        "PROBE MONITOR 2.1",
+        "",
+        "I/O INTERFACE ........ OK",
+        "CABLE ................ OK",
+        "MODEM ................ OK",
+        "",
+        "SEG 0075  READY FOR PROBE",
+        "",
+      ], { by: "line", lineDelay: 160 });
+    });
+  }
+
+  if (MODE === "console") {
+    status.textContent = "ON LINE";
+    t.boot(async (t) => {
+      await t.type(["PROBE MONITOR 2.1", "", "MODEM ................ OK", ""], { by: "line", lineDelay: 160 });
+      showDirectory();
+    });
+  }
+
+  if (MODE === "story") arrange("SETEC ASTRONOMY");
+  if (MODE === "story") t.boot(async (t) => {
     say(["WHISTLER", "Carl, could you get me some cable and an I/O interface, please?"]);
     await t.type([
       "PROBE MONITOR 2.1",
