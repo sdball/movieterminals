@@ -1687,6 +1687,7 @@
       "  back      the pin before (- or ALT-B)",
       "  pin N     pin N, 1 to 48",
       "  quad N    the first pin of quadrant N, 1 to 4 (] and [ step)",
+      "  lift      the probe off the chip",
       "  reboot    clear the screen (ALT-R)",
       "",
     ],
@@ -1724,6 +1725,7 @@
       if (!(+n >= 1 && +n <= 4)) return t.print("QUAD 1 TO 4");
       return goTo(pinAt((n - 1) * 12 + 1));
     }),
+    lift: probing(() => putDown()),
     reboot(t) {
       stopOutput();
       t.clear();
@@ -1817,15 +1819,19 @@
     back: () => step(-1),
     "quad-next": () => quadStep(1),
     "quad-back": () => quadStep(-1),
+    lift: () => putDown(),
     reboot: () => link || dark || finished || commands.reboot(t),
     help: () => link || dark || finished || commands.help(t),
     probe: () => decrypt(),
   };
 
-  document.getElementById("keys").addEventListener("click", (e) => {
-    const button = e.target.closest("button[data-action]");
-    if (button) ACTIONS[button.dataset.action]();
-  });
+  // and the big step buttons that phones get
+  for (const id of ["keys", "steps"]) {
+    document.getElementById(id).addEventListener("click", (e) => {
+      const button = e.target.closest("button[data-action]");
+      if (button) ACTIONS[button.dataset.action]();
+    });
+  }
 
   document.addEventListener("keydown", (e) => {
     let action = null;
@@ -1873,7 +1879,7 @@
 
   draw(HOME.x, HOME.y);
 
-  // the keys to step the probe, for a keyboard
+  // the keys to step the probe, for a keyboard; fingers get the buttons
   const KEY_HINT = matchMedia("(pointer: coarse)").matches ? [] : ["+/- STEP PIN   [/] STEP QUAD"];
 
   // the sandboxes open with the box already talking
@@ -1923,8 +1929,9 @@
       ...KEY_HINT,
       "",
     ], { by: "line", lineDelay: 260 });
+    // unless Mother's already found it while the screen was coming up
     say(
-      ["WHISTLER", "All right, Mother. Start anywhere on the big chip."],
+      () => (story.live ? null : ["WHISTLER", "All right, Mother. Start anywhere on the big chip."]),
       () => { if (!story.live) scatter(); },
     );
   });

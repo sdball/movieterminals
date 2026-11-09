@@ -189,13 +189,111 @@ body::after { content: none; }
   }
 }
 
+/* ---------- Under the monitor: the probe's buttons and the modem ---------- */
+/* Two panels off the glass, side by side where there's room. */
+
+#panels {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#panels > * { flex: 1 1 auto; }
+
+/* The probe's panel steps it from pin to pin and quadrant to quadrant, on a
+   call too (when the probe has to find the pin). */
+
+#steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 14px;
+  border-radius: 6px;
+  background: linear-gradient(#1c1e25, #121318);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 6px 14px rgb(0 0 0 / 0.5);
+  font: 600 11px / 1 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8f9c;
+}
+
+#steps .model { margin-right: 4px; }
+
+#steps button {
+  all: unset;
+  flex: 1 1 0;
+  display: grid;
+  place-items: center;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: linear-gradient(#3a3d47, #262830);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 0 #0a0b0e;
+  white-space: nowrap;
+  cursor: pointer;
+  color: #e6e8ee;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#steps .decrypt { display: none; background: linear-gradient(#2f6fb0, #1f4c80); }
+:root:has(#board.live) #steps .decrypt { display: grid; }
+#steps button:active { transform: translateY(1px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08); }
+#steps button:focus-visible { outline: 2px solid var(--frame); outline-offset: 2px; }
+
+/* On a phone or a touch screen, the probe is small to drag: the panels
+   stack, the buttons grow to a finger's size, and the keyboard's hints give
+   the monitor's footer the room back. Once the pin's found, stepping is
+   done with: one button puts the probe on it, one lifts it off. */
+@media (max-width: 760px), (pointer: coarse) {
+  #panels { flex-direction: column; }
+  #steps button { min-height: 44px; padding: 0; }
+  #keys .keyrow:first-child { display: none; }
+
+  :root:has(#board.live) #steps button:not(.decrypt, .lift) { display: none; }
+}
+
+/* With a mouse, the panels share a row under the monitor; as the monitor
+   narrows, they give up their names to keep it, then stack (and have the
+   room for their names again). */
+@media (min-width: 761px) and (pointer: fine) {
+  @container (max-width: 800px) {
+    #steps .model { display: none; }
+  }
+
+  @container (max-width: 710px) {
+    #modem .model { display: none; }
+    #modem .led:first-of-type { margin-left: auto; }
+  }
+
+  /* stacked, a row each, there's room for their names again */
+  @container (max-width: 650px) {
+    #steps .model,
+    #modem .model { display: inline; }
+    #modem .led:first-of-type { margin-left: 0; }
+  }
+}
+
+/* phones: the probe's buttons need its name's room */
+@media (max-width: 480px) {
+  #steps .model { display: none; }
+}
+
+/* the narrowest phones: the panels' names give their buttons the room */
+@media (max-width: 360px) {
+  #modem .model { display: none; }
+
+  #modem .led:first-of-type { margin-left: auto; }
+}
+
+/* the console has no probe */
+:root[data-mode="console"] #steps { display: none; }
+
 /* ---------- The modem: off the glass, under the monitor ---------- */
 
 #modem {
-  flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 6px 8px 6px 14px;
   border-radius: 6px;
   background: linear-gradient(#1c1e25, #121318);
@@ -207,6 +305,8 @@ body::after { content: none; }
 }
 
 #modem .model { margin-right: auto; }
+#modem > *,
+#steps > * { white-space: nowrap; }
 
 #modem .led { display: inline-flex; align-items: center; gap: 6px; }
 
@@ -598,6 +698,12 @@ body::after { content: none; }
 /* the story: the book is Carl's, to look at */
 :root[data-mode="story"] #book .entry { cursor: default; }
 :root[data-mode="story"] #book .entry:hover .number { text-decoration: none; }
+
+/* on a phone, the book would crowd out the team's lines, and in the story
+   it's Carl's anyway */
+@media (max-width: 760px) {
+  :root[data-mode="story"] #book { display: none; }
+}
 
 /* the bench: no team */
 :root[data-mode="bench"] #captions { display: none; }

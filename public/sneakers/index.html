@@ -60,12 +60,23 @@
           </div>
         </footer>
       </div>
-      <div id="modem" data-line="idle" role="group" aria-label="The modem">
-        <span class="model" aria-hidden="true">2400 BAUD</span>
-        <span class="led" data-led="oh" title="Off hook">OH</span>
-        <span class="led" data-led="cd" title="Carrier detect">CD</span>
-        <button type="button" id="decrypt" disabled>Decrypt <kbd>Alt-P</kbd></button>
-        <button type="button" id="hangup" disabled>Hang up <kbd>Esc</kbd></button>
+      <div id="panels">
+        <nav id="steps" aria-label="The logic probe">
+          <span class="model" aria-hidden="true">Logic probe</span>
+          <button type="button" data-action="quad-back" aria-label="Quadrant before">&laquo; Quad</button>
+          <button type="button" data-action="back" aria-label="Pin before">&lsaquo; Pin</button>
+          <button type="button" data-action="next" aria-label="Next pin">Pin &rsaquo;</button>
+          <button type="button" data-action="quad-next" aria-label="Next quadrant">Quad &raquo;</button>
+          <button type="button" class="decrypt" data-action="probe">Decrypt</button>
+          <button type="button" class="lift" data-action="lift" aria-label="Lift the probe off the chip">Lift</button>
+        </nav>
+        <div id="modem" data-line="idle" role="group" aria-label="The modem">
+          <span class="model" aria-hidden="true">2400 BAUD</span>
+          <span class="led" data-led="oh" title="Off hook">OH</span>
+          <span class="led" data-led="cd" title="Carrier detect">CD</span>
+          <button type="button" id="decrypt" disabled>Decrypt <kbd>Alt-P</kbd></button>
+          <button type="button" id="hangup" disabled>Hang up <kbd>Esc</kbd></button>
+        </div>
       </div>
     </section>
 
