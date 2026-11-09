@@ -339,8 +339,10 @@ body::after { content: none; }
 #modem button:focus-visible { outline: 2px solid var(--frame); outline-offset: 2px; }
 #modem kbd { margin-left: 6px; font: inherit; font-weight: 400; opacity: 0.7; }
 
-/* the decryption pin is a button only where there's no probe */
-:root:not([data-mode="console"]) #decrypt { display: none; }
+/* the decryption pin is a button only where there's no probe, and only
+   the console goes fullscreen */
+:root:not([data-mode="console"]) #decrypt,
+:root:not([data-mode="console"]) #fullscreen { display: none; }
 
 /* ---------- The bench ---------- */
 
@@ -714,8 +716,15 @@ body::after { content: none; }
 :root[data-mode="console"] #monitor {
   --cols: 80;
   --text: calc(var(--cols) * var(--advance) * 1em);
-  font-size: clamp(12px, min(100cqi / (var(--cols) * var(--advance) + 3), (100dvh - 150px) / 27), 30px);
+  font-size: clamp(12px, min(100cqi / (var(--cols) * var(--advance) + 3), (100dvh - var(--chrome, 150px)) / 27), 30px);
 }
+
+/* fullscreen: the monitor alone, edge to edge (the keyboard still decrypts
+   and hangs up) */
+:root.bare #panels,
+:root.bare #credit { display: none; }
+:root.bare #room { padding: 0; }
+:root.bare #monitor { --chrome: 24px; border-radius: 0; box-shadow: none; }
 
 :root[data-mode="console"] #screen,
 :root[data-mode="console"] #monitor[data-remote] #screen {

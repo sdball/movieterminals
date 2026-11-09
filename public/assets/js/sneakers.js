@@ -1700,18 +1700,20 @@
       "",
     ],
     story: [
-      "  Carl dials. Hang up with the modem's button, ATH, or Escape.",
+      "  Carl dials. Hang up with the modem's button, ALT-H, ATH, or Escape.",
     ],
     bench: [
       "  ATDT N    dial number N, or click one in Carl's book",
-      "  ATH       hang up (or Escape, or the modem's button)",
+      "  ATH       hang up (or ALT-H, Escape, or the modem's button)",
       "  ALT-P     the probe to the decryption pin",
     ],
     console: [
       "  dir       the directory: click a number, or Tab to it",
       "  ATDT N    dial number N",
-      "  ATH       hang up (or Escape, or the modem's button)",
+      "  ATH       hang up (or ALT-H, Escape, or the modem's button)",
       "  ALT-P     decrypt (or the modem's button)",
+      "  fullscreen  the screen alone (ALT-ENTER, Escape to leave;",
+      "              there, hang up with ALT-H or ATH)",
       "  reboot    clear the screen (ALT-R)",
     ],
   };
@@ -1746,6 +1748,7 @@
   };
   commands.clear = commands.reboot;
   commands.directory = commands.dir;
+  commands.fullscreen = (t) => (MODE === "console" ? fullscreen() : t.print("Bad command or file name"));
 
   // what the team says in the film works too
   const PHRASES = {
@@ -1801,7 +1804,8 @@
     commands: routed,
     fallback,
     echo: () => !link,
-    onEscape: (t) => link && hangUp(t),
+    // Escape hangs up; with no call, it leaves the console's fullscreen
+    onEscape: (t) => (link ? hangUp(t) : MODE === "console" && fullscreen(false)),
     unrecognized: () => "Bad command or file name",
     filters: [(line) => line.toLowerCase().replace(/[.,!?]/g, "").replace(/\s+/g, " ").trim()],
     cps: 120,
@@ -1831,6 +1835,7 @@
     reboot: () => link || dark || finished || commands.reboot(t),
     help: () => link || dark || finished || commands.help(t),
     probe: () => decrypt(),
+    hangup: () => link && hangUp(t),
   };
 
   // and the big step buttons that phones get
@@ -1847,6 +1852,7 @@
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyB") action = "back";
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyR") action = "reboot";
     else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyP") action = "probe";
+    else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyH") action = "hangup";
     else if (e.key === "F1") action = "help";
     if (!action) return;
     e.preventDefault();
@@ -1866,6 +1872,32 @@
     e.preventDefault();
     e.stopPropagation();
     ACTIONS[action]();
+  }, true);
+
+  // ---------- The console, fullscreen ----------
+  // The monitor alone: no modem, no credits, and the browser's fullscreen
+  // where it has one. The browser keeps Escape to leave its fullscreen (and
+  // the page follows), so there Alt-H hangs up.
+
+  function fullscreen(on = !document.documentElement.classList.contains("bare")) {
+    document.documentElement.classList.toggle("bare", on);
+    if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+    if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    command.focus({ preventScroll: true });
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) document.documentElement.classList.remove("bare");
+  });
+
+  document.getElementById("fullscreen").addEventListener("click", () => fullscreen(true));
+
+  // Alt-Enter, the old way; first, so the command line doesn't take the Enter
+  document.addEventListener("keydown", (e) => {
+    if (MODE !== "console" || e.key !== "Enter" || !e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    fullscreen();
   }, true);
 
   // ---------- The console's directory ----------
