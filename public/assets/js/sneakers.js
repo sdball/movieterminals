@@ -23,8 +23,10 @@
   probe back on the decryption pin and the screen churns into the clear:
   the Federal Reserve's transfer node, the New England power grid, Bay
   Area air traffic control, each as the film shows it. The team won't let
-  you touch anything. Hang up on air traffic control (Escape, ATH, "turn
-  it off") and the scene ends.
+  you touch anything. Bishop turns the monitor off on air traffic
+  control (or hang up first: Escape, ATH, "turn it off"), and the screen
+  goes dark while the team takes it in. Then the captions fade, and the
+  monitor comes back on to the bench.
 
   window.term is the terminal, and window.bench the box:
   bench.touch(n) puts the probe on pin n, bench.decryption is the pin
@@ -437,7 +439,8 @@
     showStatus();
     const bytes = reading(pin);
     setLights(lightsFor(pin, bytes), pin.kind === "magic");
-    // on a call, the screen is the far end's
+    // on a call, the screen is the far end's; shut off, it's nobody's
+    if (dark) return;
     if (link || dialing) return onTheLine(pin);
     if (pin.kind === "magic") startNoise();
     else showRows(pin, bytes);
@@ -716,7 +719,7 @@
 
   const monitor = document.getElementById("monitor");
   const DIALED = /^(?:atd[tp]?|dial|call)?\s*([\d\s()+-]+)$/;
-  const HANG_UP = new Set(["ath", "ath0", "+++", "hang up", "hangup", "esc", "escape", "exit", "quit", "bye", "logoff", "disconnect", "turn it off", "off"]);
+  const HANG_UP = new Set(["ath", "ath0", "+++", "hang up", "hangup", "esc", "escape", "exit", "quit", "bye", "logoff", "disconnect", "turn it off", "shut it off", "off"]);
 
   let link = null;     // the call: { target, ready, decoding, decoded, ... }
   let dialing = false; // between ATDT and CONNECT
@@ -831,9 +834,9 @@
     delete monitor.dataset.remote;
     t.setPrompt("> ");
     t.clear();
-    if (carrier) t.print("NO CARRIER", "");
     showStatus();
-    if (call.target.id === "atc" && call.decoded) ending();
+    if (call.target.id === "atc" && call.decoded) ending(t);
+    else if (carrier) t.print("NO CARRIER", "");
     return true;
   }
 
@@ -1375,25 +1378,68 @@
           ["LIZ", "Janek must have figured out a way to solve those problems without the key..."],
           ["LIZ", "...and he hardwired it into that chip."],
           () => (calling("atc") ? ["CREASE", "All right. Turn it off."] : null),
-          1500,
+          () => calling("atc") && sleep(1500),
           () => (calling("atc") ? ["WHISTLER", "Anybody want to crash a couple of passenger jets?"] : null),
           () => (calling("atc") ? ["CREASE", "I said turn it off!"] : null),
-          () => (calling("atc") ? ["BISHOP", "Turn it off!"] : null),
+          () => {
+            if (!calling("atc")) return null;
+            // and somebody does
+            setTimeout(() => calling("atc") && hangUp(t), 600);
+            return ["BISHOP", "Turn it off!"];
+          },
         );
       },
     },
   };
 
-  // off, at last
-  function ending() {
-    once("ending",
+  // off, at last: the monitor goes dark while the team takes it in, the
+  // captions fade, and the monitor comes back on to the bench
+  let dark = false;
+
+  function ending(t) {
+    dark = true;
+    stopOutput();
+    t.hold();
+    monitor.classList.add("off");
+    putDown();
+    const first = !story.said.has("ending");
+    story.said.add("ending");
+    say(
       800,
-      ["CARL", "So it's a code breaker."],
-      ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
-      1600,
-      ["BISHOP", "No more secrets."],
-      () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
+      ...(first ? [
+        ["CARL", "So it's a code breaker."],
+        ["BISHOP", ["No. It's ", el("em", null, "the"), " code breaker."]],
+        1600,
+        ["BISHOP", "No more secrets."],
+        () => { document.title = "NO MORE SECRETS · Sneakers | Movie Terminals"; },
+        2600,
+      ] : [1200]),
+      fadeCaptions,
+      () => powerOn(t),
     );
+  }
+
+  async function fadeCaptions() {
+    if (!captions.children.length) return;
+    captions.classList.add("fading");
+    if (!reduceMotion.matches) await sleep(1400);
+    captions.replaceChildren();
+    captions.classList.remove("fading");
+  }
+
+  // the tube warms up again, the way it did when the page opened
+  function powerOn(t) {
+    dark = false;
+    monitor.classList.remove("off");
+    monitor.style.animation = "none";
+    void monitor.offsetWidth;
+    monitor.style.animation = "";
+    stopOutput();
+    t.clear();
+    t.print("PROBE MONITOR 2.1", "", "SEG 0075  READY FOR PROBE", "");
+    showStatus();
+    if (contact) landed(contact, null);
+    t.release();
   }
 
   // what's typed during a call goes to the far end, or hangs up, or dials
@@ -1529,8 +1575,8 @@
   // the footer's keys, by click or by key (the footer's gone during a call)
   const ACTIONS = {
     next: () => step(1),
-    reboot: () => link || commands.reboot(t),
-    help: () => link || commands.help(t),
+    reboot: () => link || dark || commands.reboot(t),
+    help: () => link || dark || commands.help(t),
   };
 
   document.getElementById("keys").addEventListener("click", (e) => {
