@@ -915,7 +915,7 @@
     const call = (link = { target, ready: false, decoding: false, decoded: false });
     modemSync();
     monitor.dataset.remote = target.id;
-    callInHistory();
+    opened("call");
     t.setPrompt("");
     t.clear();
     status.textContent = "CONNECT 2400";
@@ -938,7 +938,7 @@
       return true;
     }
     link = null;
-    if (history.state?.call) history.back(); // the call's page in the history
+    closed("call");
     modemSync();
     clearTimeout(call.nudge);
     clearInterval(call.sweep);
@@ -955,19 +955,40 @@
     return true;
   }
 
-  // In the console a call is a page in the browser's history, so Back (a
-  // phone's swipe, say) hangs up and returns to the directory. Hanging up
-  // any other way goes back past it, and the page is off the line by then.
-  function callInHistory() {
-    if (MODE === "console" && !history.state?.call) history.pushState({ ...history.state, call: true }, "");
+  // ---------- Back ----------
+  // In the console, a call and the fullscreen are each a page in the
+  // browser's history, so Back (a phone's swipe, say) closes the last one
+  // opened: it hangs up, or leaves the fullscreen, which on a touch screen
+  // has no Escape. Closing one another way goes back past its page, or if
+  // it's under the other's, leaves it to be skipped on the way back.
+
+  const layers = new Set(); // what's open, in order: "call", "bare"
+  const shown = () => history.state?.layers ?? [];
+
+  function opened(layer) {
+    if (MODE !== "console" || layers.has(layer)) return;
+    layers.add(layer);
+    history.pushState({ ...history.state, layers: [...layers] }, "");
+  }
+
+  function closed(layer) {
+    if (!layers.delete(layer)) return;
+    if (shown().at(-1) === layer) history.back();
+    else history.replaceState({ ...history.state, layers: [...layers] }, "");
   }
 
   addEventListener("popstate", () => {
-    if (link && !history.state?.call) hangUp(t);
+    const want = shown();
+    const leaving = [...layers].filter((layer) => !want.includes(layer));
+    for (const layer of leaving) layers.delete(layer); // so closed() leaves the history be
+    if (leaving.includes("call") && link) hangUp(t);
+    if (leaving.includes("bare")) fullscreen(false);
+    // a page for something already closed (or forward, to one): on past it
+    if (want.some((layer) => !layers.has(layer))) history.back();
   });
 
-  // a reload keeps the history's state, but not the call
-  if (history.state?.call) history.replaceState({ ...history.state, call: false }, "");
+  // a reload keeps the history's state, but nothing's open
+  if (shown().length) history.replaceState({ ...history.state, layers: [] }, "");
 
   // the modem's lights and buttons follow the line
   const modem = document.getElementById("modem");
@@ -1734,7 +1755,7 @@
       "  ATDT N    dial number N",
       "  ATH       hang up (or ALT-H, Escape, Back, or the modem's button)",
       "  ALT-P     decrypt (or the modem's button, or tap the screen)",
-      "  fullscreen  the screen alone (ALT-ENTER, Escape to leave;",
+      "  fullscreen  the screen alone (ALT-ENTER; Escape or Back to leave;",
       "              there, hang up with ALT-H or ATH)",
       "  reboot    clear the screen (ALT-R)",
     ],
@@ -1907,13 +1928,14 @@
 
   function fullscreen(on = !document.documentElement.classList.contains("bare")) {
     document.documentElement.classList.toggle("bare", on);
+    on ? opened("bare") : closed("bare");
     if (on && !touchFirst && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
     if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     if (!touchFirst) command.focus({ preventScroll: true });
   }
 
   document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement) document.documentElement.classList.remove("bare");
+    if (!document.fullscreenElement && document.documentElement.classList.contains("bare")) fullscreen(false);
   });
 
   document.getElementById("fullscreen").addEventListener("click", () => fullscreen(true));
