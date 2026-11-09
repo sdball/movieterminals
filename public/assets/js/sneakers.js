@@ -915,6 +915,7 @@
     const call = (link = { target, ready: false, decoding: false, decoded: false });
     modemSync();
     monitor.dataset.remote = target.id;
+    callInHistory();
     t.setPrompt("");
     t.clear();
     status.textContent = "CONNECT 2400";
@@ -937,6 +938,7 @@
       return true;
     }
     link = null;
+    if (history.state?.call) history.back(); // the call's page in the history
     modemSync();
     clearTimeout(call.nudge);
     clearInterval(call.sweep);
@@ -952,6 +954,20 @@
     if (MODE === "story") afterCall(call);
     return true;
   }
+
+  // In the console a call is a page in the browser's history, so Back (a
+  // phone's swipe, say) hangs up and returns to the directory. Hanging up
+  // any other way goes back past it, and the page is off the line by then.
+  function callInHistory() {
+    if (MODE === "console" && !history.state?.call) history.pushState({ ...history.state, call: true }, "");
+  }
+
+  addEventListener("popstate", () => {
+    if (link && !history.state?.call) hangUp(t);
+  });
+
+  // a reload keeps the history's state, but not the call
+  if (history.state?.call) history.replaceState({ ...history.state, call: false }, "");
 
   // the modem's lights and buttons follow the line
   const modem = document.getElementById("modem");
@@ -1716,7 +1732,7 @@
     console: [
       "  dir       the directory: click a number, or Tab to it",
       "  ATDT N    dial number N",
-      "  ATH       hang up (or ALT-H, Escape, or the modem's button)",
+      "  ATH       hang up (or ALT-H, Escape, Back, or the modem's button)",
       "  ALT-P     decrypt (or the modem's button, or tap the screen)",
       "  fullscreen  the screen alone (ALT-ENTER, Escape to leave;",
       "              there, hang up with ALT-H or ATH)",
