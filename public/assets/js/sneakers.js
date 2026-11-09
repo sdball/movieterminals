@@ -66,6 +66,8 @@
     quad: 0,            // the quadrant probed last
     inQuad: 0,          // contacts in a row in that quadrant
     sawMagic: false,    // went from the decryption pin to another
+    lost: 0,            // the timer for Whistler to say where it is
+    pointed: false,     // Whistler said where it is
     live: false,        // the box is talking
     said: new Set(),    // one-time lines already said
     cracked: new Set(), // the places decrypted so far: fed, grid, atc
@@ -77,11 +79,25 @@
   // dropped when the team is already talking. A line is [who, text], and
   // its text can be an array of strings and nodes. A function in the queue
   // runs when its turn comes, and if it returns a line, that's said: a line
-  // that only makes sense if things haven't moved on.
+  // that only makes sense if things haven't moved on. hush() drops
+  // whatever's queued, and cuts short the line being said, for news that
+  // can't wait.
 
   const captions = document.getElementById("captions");
   let queue = Promise.resolve();
   let queued = 0;
+  let epoch = 0; // bumped by hush(); a say() from before it is dropped
+  let wake;
+  let hushed = new Promise((resolve) => (wake = resolve));
+
+  function hush() {
+    epoch++;
+    wake();
+    hushed = new Promise((resolve) => (wake = resolve));
+  }
+
+  // a pause the team takes, which hush() cuts short
+  const pause = (ms) => Promise.race([sleep(ms), hushed]);
 
   function caption(who, text) {
     for (const old of captions.querySelectorAll("p:not(.old)")) old.classList.add("old");
@@ -92,15 +108,17 @@
   async function speak([who, text]) {
     caption(who, text);
     const length = [text].flat().reduce((sum, part) => sum + (part.textContent ?? part).length, 0);
-    await sleep(900 + length * 40);
+    await pause(900 + length * 40);
   }
 
   function say(...items) {
     if (silent) return queue;
     queued++;
+    const said = epoch;
     queue = queue.then(async () => {
       for (const item of items) {
-        if (typeof item === "number") await sleep(item);
+        if (said !== epoch) return;
+        if (typeof item === "number") await pause(item);
         else if (typeof item === "function") {
           const line = await item();
           if (Array.isArray(line)) await speak(line);
@@ -456,16 +474,22 @@
     story.probes++;
     if (story.live) return;
 
-    // stay on it, and it dawns on them; move on, and Whistler wants it back
+    // stay on it, and it dawns on them; move on, and Whistler wants it
+    // back; move on again, or take too long, and he says where it is
     if (pin.kind === "magic") {
+      clearTimeout(story.lost);
+      hush();
       dwell = setTimeout(goLive, story.sawMagic ? 1500 : 2500);
       return;
     }
     if (before?.kind === "magic" && !story.sawMagic) {
       story.sawMagic = true;
+      hush();
       say(["WHISTLER", "Whoa. What was that? Go back one."]);
+      story.lost = setTimeout(pointBack, 12000);
       return;
     }
+    if (story.sawMagic && !story.pointed) return pointBack();
     if (pin.kind === "key") {
       story.keys.add(pin.n);
       const found = story.keys.size;
@@ -630,19 +654,38 @@
 
   // ---------- The box talks ----------
 
-  // the box is live, and the decryption pin marked
-  function liven() {
-    story.live = true;
-    board.classList.add("live");
-    // a dab of paint off the end of the pin, so Mother won't lose it again
+  // a dab of paint off the end of the decryption pin, so Mother won't
+  // lose it again
+  function mark() {
     const magic = PINS.find((pin) => pin.kind === "magic");
+    if (magic.node.querySelector(".dab")) return;
     const [dx, dy] = { 1: [-9, 0], 2: [0, 9], 3: [9, 0], 4: [0, -9] }[magic.quad];
     magic.node.append(svg("circle", { class: "dab", cx: magic.cx + dx, cy: magic.cy + dy, r: 3 }));
   }
 
+  // the box is live, and the decryption pin marked
+  function liven() {
+    story.live = true;
+    board.classList.add("live");
+    mark();
+  }
+
+  // Mother didn't go back one: Whistler reads the pin off the screen's
+  // title bar, and it gets its dab of paint
+  function pointBack() {
+    clearTimeout(story.lost);
+    if (story.live || story.pointed) return;
+    story.pointed = true;
+    const magic = PINS.find((pin) => pin.kind === "magic");
+    hush();
+    say(() => mark(), ["WHISTLER", `Mother, go back to PIN ${magic.n} QUAD ${magic.quad}.`]);
+  }
+
+  // whatever the team was going on about, this comes first
   function goLive() {
     if (story.live) return;
     liven();
+    hush();
     say(
       ["WHISTLER", "Holy cow."],
       ["WHISTLER", "What the hell is this?"],
